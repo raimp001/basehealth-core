@@ -389,6 +389,112 @@ export async function processCompletedPayment(
   }
 }
 
+
+
+export interface SolanaExpectedTransferParams {
+  signature: string
+  expectedRecipient: string
+  expectedAmount: number
+  currency: 'SOL' | 'USDC'
+  expectedSender?: string
+}
+
+/**
+ * Verify a transaction includes the expected transfer details.
+ */
+export async function verifyExpectedTransfer(
+  params: SolanaExpectedTransferParams
+): Promise<SolanaTransactionStatus> {
+  try {
+    const connection = getConnection()
+    const tx = await connection.getParsedTransaction(params.signature, {
+      commitment: solanaConfig.commitment,
+      maxSupportedTransactionVersion: 0,
+    })
+
+    if (!tx || !tx.meta) {
+      return { confirmed: false, error: 'Transaction not found' }
+    }
+
+    if (tx.meta.err) {
+      return { confirmed: false, error: JSON.stringify(tx.meta.err) }
+    }
+
+    const recipient = params.expectedRecipient
+    const expectedSender = params.expectedSender
+    const expectedAmount = Number(params.expectedAmount)
+
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+      return { confirmed: false, error: 'Invalid expected amount' }
+    }
+
+    if (params.currency === 'SOL') {
+      const preBalances = tx.meta.preBalances || []
+      const postBalances = tx.meta.postBalances || []
+      const accountKeys = tx.transaction.message.accountKeys
+
+      const recipientIndex = accountKeys.findIndex((key) => key.pubkey.toBase58() === recipient)
+      if (recipientIndex < 0) {
+        return { confirmed: false, error: 'Recipient not found in transaction accounts' }
+      }
+
+      const lamportDelta = (postBalances[recipientIndex] || 0) - (preBalances[recipientIndex] || 0)
+      const receivedSol = lamportDelta / LAMPORTS_PER_SOL
+      const amountDiff = Math.abs(receivedSol - expectedAmount)
+      if (amountDiff > 0.000001) {
+        return { confirmed: false, error: `Amount mismatch: expected ${expectedAmount} SOL, received ${receivedSol} SOL` }
+      }
+
+      if (expectedSender) {
+        const senderIndex = accountKeys.findIndex((key) => key.pubkey.toBase58() === expectedSender)
+        if (senderIndex < 0) {
+          return { confirmed: false, error: 'Expected sender not found in transaction accounts' }
+        }
+      }
+    } else {
+      const transferInstruction = tx.transaction.message.instructions.find((ix: any) => {
+        const parsed = (ix as any).parsed
+        if (!parsed || parsed.type !== 'transferChecked') return false
+        const info = parsed.info || {}
+        return info.mint === solanaConfig.usdcMint[solanaConfig.network]
+      }) as any
+
+      if (!transferInstruction?.parsed?.info) {
+        return { confirmed: false, error: 'USDC transfer instruction not found' }
+      }
+
+      const info = transferInstruction.parsed.info
+      const recipientOwner = info.destinationOwner || info.destination
+      const senderOwner = info.authority || info.owner
+
+      if (recipientOwner !== recipient && info.destination !== recipient) {
+        return { confirmed: false, error: 'USDC recipient mismatch' }
+      }
+
+      if (expectedSender && senderOwner !== expectedSender) {
+        return { confirmed: false, error: 'USDC sender mismatch' }
+      }
+
+      const rawAmount = Number(info.tokenAmount?.amount ?? info.amount ?? 0)
+      const decimals = Number(info.tokenAmount?.decimals ?? 6)
+      const amount = rawAmount / (10 ** decimals)
+      const amountDiff = Math.abs(amount - expectedAmount)
+      if (amountDiff > 0.000001) {
+        return { confirmed: false, error: `USDC amount mismatch: expected ${expectedAmount}, received ${amount}` }
+      }
+    }
+
+    return {
+      confirmed: true,
+      slot: tx.slot,
+      blockTime: tx.blockTime || undefined,
+    }
+  } catch (error) {
+    console.error('Error verifying expected transfer:', error)
+    return { confirmed: false, error: String(error) }
+  }
+}
+
 // =============================================================================
 // PRICE CONVERSION
 // =============================================================================
