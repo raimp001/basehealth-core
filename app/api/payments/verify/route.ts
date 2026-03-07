@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
     const token = await getToken({ req: request as any, secret: process.env.NEXTAUTH_SECRET })
     const actorUserId = typeof token?.id === 'string' ? token.id : ''
     const actorEmail = typeof token?.email === 'string' ? token.email : ''
+    const actorWallet = typeof token?.walletAddress === 'string' ? token.walletAddress.toLowerCase() : ''
     
     const { 
       paymentId, 
@@ -159,6 +160,13 @@ export async function POST(request: NextRequest) {
       typeof verification.sender === "string" ? verification.sender.toLowerCase() : verification.sender
     const normalizedRecipient =
       typeof verification.recipient === "string" ? verification.recipient.toLowerCase() : verification.recipient
+
+    if (!isAdminEmail(actorEmail) && actorWallet && normalizedSender && actorWallet !== normalizedSender) {
+      return NextResponse.json({
+        success: false,
+        error: 'Payment sender does not match authenticated wallet',
+      }, { status: 403 })
+    }
     
     // Mark payment as processed to prevent replay
     markPaymentProcessed(

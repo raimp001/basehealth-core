@@ -399,6 +399,20 @@ export interface SolanaExpectedTransferParams {
   expectedSender?: string
 }
 
+interface ParsedInstructionInfo {
+  source?: string
+  destination?: string
+  authority?: string
+  owner?: string
+  mint?: string
+  lamports?: number | string
+  amount?: number | string
+  tokenAmount?: {
+    amount?: string
+    decimals?: number
+  }
+}
+
 /**
  * Verify a transaction includes the expected transfer details.
  */
@@ -420,58 +434,75 @@ export async function verifyExpectedTransfer(
       return { confirmed: false, error: JSON.stringify(tx.meta.err) }
     }
 
-    const recipient = params.expectedRecipient
-    const expectedSender = params.expectedSender
     const expectedAmount = Number(params.expectedAmount)
-
     if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
       return { confirmed: false, error: 'Invalid expected amount' }
     }
 
     if (params.currency === 'SOL') {
-      const preBalances = tx.meta.preBalances || []
-      const postBalances = tx.meta.postBalances || []
-      const accountKeys = tx.transaction.message.accountKeys
+      const transferInstruction = tx.transaction.message.instructions.find((instruction) => {
+        if (!('parsed' in instruction) || !instruction.parsed || typeof instruction.parsed !== 'object') {
+          return false
+        }
 
-      const recipientIndex = accountKeys.findIndex((key) => key.pubkey.toBase58() === recipient)
-      if (recipientIndex < 0) {
-        return { confirmed: false, error: 'Recipient not found in transaction accounts' }
+        const parsedInstruction = instruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+        return parsedInstruction.type === 'transfer'
+      })
+
+      if (!transferInstruction || !('parsed' in transferInstruction) || !transferInstruction.parsed) {
+        return { confirmed: false, error: 'SOL transfer instruction not found' }
       }
 
-      const lamportDelta = (postBalances[recipientIndex] || 0) - (preBalances[recipientIndex] || 0)
-      const receivedSol = lamportDelta / LAMPORTS_PER_SOL
-      const amountDiff = Math.abs(receivedSol - expectedAmount)
+      const parsedInstruction = transferInstruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+      const info = parsedInstruction.info || {}
+      const recipient = info.destination
+      const sender = info.source
+      const lamports = Number(info.lamports || 0)
+
+      if (!recipient || recipient !== params.expectedRecipient) {
+        return { confirmed: false, error: 'SOL recipient mismatch' }
+      }
+
+      if (params.expectedSender && sender !== params.expectedSender) {
+        return { confirmed: false, error: 'SOL sender mismatch' }
+      }
+
+      const amountSol = lamports / LAMPORTS_PER_SOL
+      const amountDiff = Math.abs(amountSol - expectedAmount)
       if (amountDiff > 0.000001) {
-        return { confirmed: false, error: `Amount mismatch: expected ${expectedAmount} SOL, received ${receivedSol} SOL` }
-      }
-
-      if (expectedSender) {
-        const senderIndex = accountKeys.findIndex((key) => key.pubkey.toBase58() === expectedSender)
-        if (senderIndex < 0) {
-          return { confirmed: false, error: 'Expected sender not found in transaction accounts' }
+        return {
+          confirmed: false,
+          error: `Amount mismatch: expected ${expectedAmount} SOL, received ${amountSol} SOL`,
         }
       }
     } else {
-      const transferInstruction = tx.transaction.message.instructions.find((ix: any) => {
-        const parsed = (ix as any).parsed
-        if (!parsed || parsed.type !== 'transferChecked') return false
-        const info = parsed.info || {}
-        return info.mint === solanaConfig.usdcMint[solanaConfig.network]
-      }) as any
+      const transferInstruction = tx.transaction.message.instructions.find((instruction) => {
+        if (!('parsed' in instruction) || !instruction.parsed || typeof instruction.parsed !== 'object') {
+          return false
+        }
 
-      if (!transferInstruction?.parsed?.info) {
+        const parsedInstruction = instruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+        const info = parsedInstruction.info || {}
+        return (
+          (parsedInstruction.type === 'transferChecked' || parsedInstruction.type === 'transfer')
+          && info.mint === solanaConfig.usdcMint[solanaConfig.network]
+        )
+      })
+
+      if (!transferInstruction || !('parsed' in transferInstruction) || !transferInstruction.parsed) {
         return { confirmed: false, error: 'USDC transfer instruction not found' }
       }
 
-      const info = transferInstruction.parsed.info
-      const recipientOwner = info.destinationOwner || info.destination
-      const senderOwner = info.authority || info.owner
+      const parsedInstruction = transferInstruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+      const info = parsedInstruction.info || {}
+      const recipient = info.destination
+      const sender = info.authority || info.owner || info.source
 
-      if (recipientOwner !== recipient && info.destination !== recipient) {
+      if (!recipient || recipient !== params.expectedRecipient) {
         return { confirmed: false, error: 'USDC recipient mismatch' }
       }
 
-      if (expectedSender && senderOwner !== expectedSender) {
+      if (params.expectedSender && sender !== params.expectedSender) {
         return { confirmed: false, error: 'USDC sender mismatch' }
       }
 
@@ -480,7 +511,10 @@ export async function verifyExpectedTransfer(
       const amount = rawAmount / (10 ** decimals)
       const amountDiff = Math.abs(amount - expectedAmount)
       if (amountDiff > 0.000001) {
-        return { confirmed: false, error: `USDC amount mismatch: expected ${expectedAmount}, received ${amount}` }
+        return {
+          confirmed: false,
+          error: `USDC amount mismatch: expected ${expectedAmount}, received ${amount}`,
+        }
       }
     }
 
