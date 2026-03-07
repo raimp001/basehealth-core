@@ -402,6 +402,7 @@ export interface SolanaExpectedTransferParams {
 interface ParsedInstructionInfo {
   source?: string
   destination?: string
+  destinationOwner?: string
   authority?: string
   owner?: string
   mint?: string
@@ -495,7 +496,7 @@ export async function verifyExpectedTransfer(
 
       const parsedInstruction = transferInstruction.parsed as { type?: string; info?: ParsedInstructionInfo }
       const info = parsedInstruction.info || {}
-      const recipient = info.destination
+      const recipient = info.destinationOwner || info.destination
       const sender = info.authority || info.owner || info.source
 
       if (!recipient || recipient !== params.expectedRecipient) {
