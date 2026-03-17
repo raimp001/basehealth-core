@@ -389,6 +389,147 @@ export async function processCompletedPayment(
   }
 }
 
+
+
+export interface SolanaExpectedTransferParams {
+  signature: string
+  expectedRecipient: string
+  expectedAmount: number
+  currency: 'SOL' | 'USDC'
+  expectedSender?: string
+}
+
+interface ParsedInstructionInfo {
+  source?: string
+  destination?: string
+  destinationOwner?: string
+  authority?: string
+  owner?: string
+  mint?: string
+  lamports?: number | string
+  amount?: number | string
+  tokenAmount?: {
+    amount?: string
+    decimals?: number
+  }
+}
+
+/**
+ * Verify a transaction includes the expected transfer details.
+ */
+export async function verifyExpectedTransfer(
+  params: SolanaExpectedTransferParams
+): Promise<SolanaTransactionStatus> {
+  try {
+    const connection = getConnection()
+    const tx = await connection.getParsedTransaction(params.signature, {
+      commitment: solanaConfig.commitment,
+      maxSupportedTransactionVersion: 0,
+    })
+
+    if (!tx || !tx.meta) {
+      return { confirmed: false, error: 'Transaction not found' }
+    }
+
+    if (tx.meta.err) {
+      return { confirmed: false, error: JSON.stringify(tx.meta.err) }
+    }
+
+    const expectedAmount = Number(params.expectedAmount)
+    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+      return { confirmed: false, error: 'Invalid expected amount' }
+    }
+
+    if (params.currency === 'SOL') {
+      const transferInstruction = tx.transaction.message.instructions.find((instruction) => {
+        if (!('parsed' in instruction) || !instruction.parsed || typeof instruction.parsed !== 'object') {
+          return false
+        }
+
+        const parsedInstruction = instruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+        return parsedInstruction.type === 'transfer'
+      })
+
+      if (!transferInstruction || !('parsed' in transferInstruction) || !transferInstruction.parsed) {
+        return { confirmed: false, error: 'SOL transfer instruction not found' }
+      }
+
+      const parsedInstruction = transferInstruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+      const info = parsedInstruction.info || {}
+      const recipient = info.destination
+      const sender = info.source
+      const lamports = Number(info.lamports || 0)
+
+      if (!recipient || recipient !== params.expectedRecipient) {
+        return { confirmed: false, error: 'SOL recipient mismatch' }
+      }
+
+      if (params.expectedSender && sender !== params.expectedSender) {
+        return { confirmed: false, error: 'SOL sender mismatch' }
+      }
+
+      const amountSol = lamports / LAMPORTS_PER_SOL
+      const amountDiff = Math.abs(amountSol - expectedAmount)
+      if (amountDiff > 0.000001) {
+        return {
+          confirmed: false,
+          error: `Amount mismatch: expected ${expectedAmount} SOL, received ${amountSol} SOL`,
+        }
+      }
+    } else {
+      const transferInstruction = tx.transaction.message.instructions.find((instruction) => {
+        if (!('parsed' in instruction) || !instruction.parsed || typeof instruction.parsed !== 'object') {
+          return false
+        }
+
+        const parsedInstruction = instruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+        const info = parsedInstruction.info || {}
+        return (
+          (parsedInstruction.type === 'transferChecked' || parsedInstruction.type === 'transfer')
+          && info.mint === solanaConfig.usdcMint[solanaConfig.network]
+        )
+      })
+
+      if (!transferInstruction || !('parsed' in transferInstruction) || !transferInstruction.parsed) {
+        return { confirmed: false, error: 'USDC transfer instruction not found' }
+      }
+
+      const parsedInstruction = transferInstruction.parsed as { type?: string; info?: ParsedInstructionInfo }
+      const info = parsedInstruction.info || {}
+      const recipient = info.destinationOwner || info.destination
+      const sender = info.authority || info.owner || info.source
+
+      if (!recipient || recipient !== params.expectedRecipient) {
+        return { confirmed: false, error: 'USDC recipient mismatch' }
+      }
+
+      if (params.expectedSender && sender !== params.expectedSender) {
+        return { confirmed: false, error: 'USDC sender mismatch' }
+      }
+
+      const rawAmount = Number(info.tokenAmount?.amount ?? info.amount ?? 0)
+      const decimals = Number(info.tokenAmount?.decimals ?? 6)
+      const amount = rawAmount / (10 ** decimals)
+      const amountDiff = Math.abs(amount - expectedAmount)
+      if (amountDiff > 0.000001) {
+        return {
+          confirmed: false,
+          error: `USDC amount mismatch: expected ${expectedAmount}, received ${amount}`,
+        }
+      }
+    }
+
+    return {
+      confirmed: true,
+      slot: tx.slot,
+      blockTime: tx.blockTime || undefined,
+    }
+  } catch (error) {
+    console.error('Error verifying expected transfer:', error)
+    return { confirmed: false, error: String(error) }
+  }
+}
+
 // =============================================================================
 // PRICE CONVERSION
 // =============================================================================
