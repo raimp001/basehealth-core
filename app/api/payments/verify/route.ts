@@ -23,6 +23,7 @@ import {
 import { prisma } from '@/lib/prisma'
 import { ACTIVE_CHAIN } from '@/lib/network-config'
 import { createBillingReceipt } from '@/lib/base-billing'
+import { ASSISTANT_PASS } from '@/lib/assistant-pass'
 
 interface VerifyRequest {
   paymentId: string
@@ -43,12 +44,23 @@ export async function POST(request: NextRequest) {
   try {
     const body: VerifyRequest = await request.json()
     
-    const { 
+    const {
       paymentId, 
       orderId, 
       expectedAmount, 
       expectedRecipient = basePayConfig.recipientAddress 
     } = body
+
+    // Pull booking context (if this order maps to a persisted booking)
+    const booking = orderId
+      ? await prisma.booking.findUnique({
+          where: { id: orderId },
+          include: {
+            caregiver: { select: { firstName: true, lastName: true, email: true, walletAddress: true } },
+            user: { select: { name: true, email: true } },
+          },
+        })
+      : null
     
     // Validate required fields
     if (!paymentId) {
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
     
-    // Check for replay attack
+    // Check for replay attack (in-memory fast path)
     if (isPaymentProcessed(paymentId)) {
       return NextResponse.json({
         success: false,
@@ -80,12 +92,50 @@ export async function POST(request: NextRequest) {
         code: 'PAYMENT_ALREADY_PROCESSED',
       }, { status: 409 })
     }
+
+    // Check for replay attack (persistent DB path)
+    const existingTx = await prisma.transaction.findFirst({
+      where: {
+        OR: [
+          { transactionHash: paymentId },
+          { providerId: paymentId },
+        ],
+      },
+      select: { id: true, bookingId: true, status: true },
+    })
+    if (existingTx) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Payment has already been recorded',
+          code: 'PAYMENT_ALREADY_RECORDED',
+        },
+        { status: 409 },
+      )
+    }
+
+    // Derive expected amount/recipient from trusted server-side state whenever possible.
+    const serverExpectedAmount = booking ? Number(booking.amount).toFixed(2) : expectedAmount
+    const serverExpectedRecipient = booking?.caregiver?.walletAddress || expectedRecipient
+
+    // Assistant pass guardrail: keep amount and destination fixed server-side.
+    if (body.serviceType === ASSISTANT_PASS.serviceType) {
+      if (!orderId.startsWith(`${ASSISTANT_PASS.serviceType}-`)) {
+        return NextResponse.json({ success: false, error: 'Invalid assistant pass order ID' }, { status: 400 })
+      }
+      if (Number.parseFloat(serverExpectedAmount) !== ASSISTANT_PASS.usd) {
+        return NextResponse.json({ success: false, error: 'Invalid assistant pass amount' }, { status: 400 })
+      }
+      if (serverExpectedRecipient.toLowerCase() !== basePayConfig.recipientAddress.toLowerCase()) {
+        return NextResponse.json({ success: false, error: 'Invalid assistant pass recipient' }, { status: 400 })
+      }
+    }
     
     // Verify payment with Base Pay SDK
     const verification = await verifyBasePayment(
       paymentId,
-      expectedAmount,
-      expectedRecipient
+      serverExpectedAmount,
+      serverExpectedRecipient
     )
     
     if (!verification.verified) {
@@ -106,10 +156,10 @@ export async function POST(request: NextRequest) {
       paymentId,
       orderId,
       verification.sender || '',
-      verification.amount || expectedAmount
+      verification.amount || serverExpectedAmount
     )
 
-    const parsedExpectedAmount = Number.parseFloat(expectedAmount)
+    const parsedExpectedAmount = Number.parseFloat(serverExpectedAmount)
     const normalizedAmount = Number.isFinite(parsedExpectedAmount) ? parsedExpectedAmount : 0
 
     // Record provider earning (credit to their pending balance)
@@ -124,14 +174,6 @@ export async function POST(request: NextRequest) {
 
     // Persist payment state on booking and create transaction record
     if (orderId) {
-      const booking = await prisma.booking.findUnique({
-        where: { id: orderId },
-        include: {
-          caregiver: { select: { firstName: true, lastName: true, email: true } },
-          user: { select: { name: true, email: true } },
-        },
-      })
-
       if (booking) {
         const existingMetadata =
           booking.paymentMetadata && typeof booking.paymentMetadata === 'object'
@@ -156,7 +198,7 @@ export async function POST(request: NextRequest) {
                 verifiedAt: new Date().toISOString(),
                 sender: normalizedSender,
                 recipient: normalizedRecipient,
-                amount: verification.amount || expectedAmount,
+                amount: verification.amount || serverExpectedAmount,
               },
             },
           },
@@ -234,7 +276,7 @@ export async function POST(request: NextRequest) {
             verifiedAt: now.toISOString(),
             sender: normalizedSender,
             recipient: normalizedRecipient,
-            amount: verification.amount || expectedAmount,
+            amount: verification.amount || serverExpectedAmount,
           },
         },
         createdAt: now,
