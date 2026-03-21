@@ -152,12 +152,14 @@ export default function ClinicalTrialsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-10">
-        <header className="mb-6">
+        <header className="mb-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Clinical trials</h1>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Clinical Trials Research Network</p>
+              <h1 className="mt-2 text-2xl sm:text-4xl font-semibold tracking-tight">Search trials without the clutter.</h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Search ClinicalTrials.gov (400,000+ studies). Use the trial team as the source of truth.
+                Search ClinicalTrials.gov by condition, location, or institution. Use this page to narrow the field,
+                then confirm details directly with the trial team.
               </p>
             </div>
             <Link
@@ -168,6 +170,20 @@ export default function ClinicalTrialsPage() {
             </Link>
           </div>
         </header>
+
+        <div className="mb-6 grid gap-3 md:grid-cols-3">
+          {[
+            { label: "Coverage", value: "400,000+", detail: "ClinicalTrials.gov records" },
+            { label: "Decision rule", value: "Call first", detail: "Enrollment can change quickly" },
+            { label: "Shortcuts", value: "Centers + categories", detail: "Search by condition or institution" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-border bg-card/40 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{item.value}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
+            </div>
+          ))}
+        </div>
 
         <Alert className="mb-6 border-border bg-muted/20">
           <AlertCircle className="h-4 w-4" />
@@ -183,7 +199,7 @@ export default function ClinicalTrialsPage() {
 
         <Card className="mb-6 border-border shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Search</CardTitle>
+            <CardTitle className="text-base">Start with the condition, not the form</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -254,7 +270,7 @@ export default function ClinicalTrialsPage() {
             </form>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Quick</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quick searches</p>
               <div className="flex flex-wrap gap-2">
                 {QUICK_SEARCHES.map((q) => (
                   <Button key={q.label} type="button" variant="outline" size="sm" onClick={() => runQuickSearch(q.condition, q.location)}>
@@ -340,7 +356,7 @@ export default function ClinicalTrialsPage() {
               <p className="text-xs text-muted-foreground">
                 Showing {trials.length} of {totalCount.toLocaleString()} trials
               </p>
-              <Badge variant="outline">ClinicalTrials.gov</Badge>
+              <Badge variant="outline">ClinicalTrials.gov source</Badge>
             </div>
 
             <div className="space-y-3">
@@ -431,4 +447,3 @@ export default function ClinicalTrialsPage() {
     </div>
   )
 }
-

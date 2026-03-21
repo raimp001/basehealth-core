@@ -191,13 +191,17 @@ function SearchPageContent() {
         <div className="max-w-5xl mx-auto px-6">
           {/* Header */}
           <div className={`max-w-3xl mb-10 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-            <h1 className="text-4xl md:text-5xl font-normal tracking-tight mb-4" style={{ lineHeight: '1.1' }}>
-              Find Healthcare
+            <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
+              Find care
+            </p>
+            <h1 className="text-4xl md:text-5xl font-normal tracking-tight mb-4 mt-2" style={{ lineHeight: '1.1' }}>
+              Search providers,
               <br />
-              <span style={{ color: 'var(--text-secondary)' }}>Providers</span>
+              <span style={{ color: 'var(--text-secondary)' }}>not directories.</span>
             </h1>
             <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
-              Search doctors and specialists by specialty and location.
+              Find clinicians by specialty and location. If someone is not on BaseHealth yet, you can still call the
+              clinic directly from here.
             </p>
 
             {/* Mode toggle */}
@@ -223,6 +227,23 @@ function SearchPageContent() {
                 Find Caregivers
               </Link>
             </div>
+          </div>
+
+          <div className={`grid gap-3 md:grid-cols-3 mb-8 ${mounted ? 'animate-fade-in-up delay-150' : 'opacity-0'}`}>
+            {[
+              { title: 'Search by specialty', body: 'Primary care, cardiology, dermatology, pediatrics, and more.' },
+              { title: 'Use city or ZIP', body: 'Search by city, state, or ZIP code and use device location when needed.' },
+              { title: 'Direct fallback', body: 'Not listed on BaseHealth yet? Call the clinic or open the NPI record.' },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="rounded-xl border p-4"
+                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}
+              >
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.title}</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{item.body}</p>
+              </div>
+            ))}
           </div>
 
           {/* Search Form */}
@@ -392,7 +413,7 @@ function SearchPageContent() {
           {!isLoading && providers.length > 0 && (
             <>
               <div className="flex items-center justify-between mb-6">
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{providers.length} providers found</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{providers.length} provider matches</p>
                 {location && (
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     Searching in: {location}
@@ -490,7 +511,7 @@ function SearchPageContent() {
                       // NPI Registry provider - show contact options
                       <div className="mt-4 space-y-2">
                         <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
-                          Not yet on BaseHealth — contact directly
+                          Not yet on BaseHealth. You can still contact them directly.
                         </p>
                         <div className="flex gap-2">
                           {provider.phone && provider.phone !== 'Contact for availability' ? (
@@ -541,6 +562,23 @@ function SearchPageContent() {
               <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
                 You can search by city name (Portland, Oregon), state (OR), or ZIP code (97201)
               </p>
+              <div className="mb-8 rounded-xl border p-4 text-left max-w-xl mx-auto" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+                <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  Need help deciding what kind of clinician to search for?
+                </p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Start with the assistant and describe the issue in plain language. It can point you to primary care,
+                  specialist care, telehealth, or the next best step.
+                </p>
+                <Link
+                  href="/chat?q=Help%20me%20figure%20out%20what%20provider%20I%20need"
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-medium"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Ask the assistant
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
               <div className="flex flex-wrap justify-center gap-3">
                 <button
                   onClick={() => handleQuickSearch('Primary Care', 'Portland, Oregon')}
