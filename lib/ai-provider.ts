@@ -4,34 +4,27 @@ import { openai } from "@ai-sdk/openai"
 import { groq } from "@ai-sdk/groq"
 import type { OpenClawAgentId } from "@/lib/openclaw-agent-catalog"
 import { getOpenClawModel } from "@/lib/agent-service"
+import {
+  getConfiguredPrimaryAiProvider,
+  getOpenClawCredential,
+  getOpenClawGatewayAgentId,
+  getOpenClawGatewayUrl,
+  hasUsableOpenClawGateway,
+} from "@/lib/openclaw-gateway"
 
 export type ResolvedAiProvider = "openclaw" | "openai" | "groq" | "none"
 
-const OPENCLAW_GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL || "https://gateway.openclaw.ai")
-  .trim()
-  .replace(/\/$/, "")
-  .replace(/\/v1$/, "")
-
-const OPENCLAW_GATEWAY_AGENT_ID = (process.env.OPENCLAW_GATEWAY_AGENT_ID || "main").trim()
-
 let cachedOpenClawHealth: { checkedAt: number; healthy: boolean } | null = null
 
-function getOpenClawCredential(): string {
-  return (
-    process.env.OPENCLAW_API_KEY ||
-    process.env.OPENCLAW_GATEWAY_TOKEN ||
-    process.env.OPENCLAW_GATEWAY_PASSWORD ||
-    ""
-  ).trim()
-}
-
 export function hasConfiguredAiProvider(): boolean {
-  return Boolean(getOpenClawCredential() || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY)
+  return getConfiguredPrimaryAiProvider() !== "none"
 }
 
 export async function probeOpenClawGateway(timeoutMs = 1500, maxAgeMs = 60_000): Promise<boolean> {
   const credential = getOpenClawCredential()
-  if (!credential) return false
+  const gatewayUrl = getOpenClawGatewayUrl()
+  const gatewayAgentId = getOpenClawGatewayAgentId()
+  if (!credential || !gatewayUrl) return false
 
   const now = Date.now()
   if (cachedOpenClawHealth && now - cachedOpenClawHealth.checkedAt < maxAgeMs) {
@@ -39,12 +32,12 @@ export async function probeOpenClawGateway(timeoutMs = 1500, maxAgeMs = 60_000):
   }
 
   try {
-    const response = await fetch(`${OPENCLAW_GATEWAY_URL}/v1/chat/completions`, {
+    const response = await fetch(`${gatewayUrl}/v1/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${credential}`,
         "Content-Type": "application/json",
-        ...(OPENCLAW_GATEWAY_AGENT_ID ? { "x-openclaw-agent-id": OPENCLAW_GATEWAY_AGENT_ID } : {}),
+        ...(gatewayAgentId ? { "x-openclaw-agent-id": gatewayAgentId } : {}),
       },
       body: JSON.stringify({ model: "openclaw", messages: [] }),
       cache: "no-store",
@@ -69,7 +62,7 @@ export async function resolveAgentModel(agent: OpenClawAgentId): Promise<{
   const groqKey = (process.env.GROQ_API_KEY || "").trim()
   const fallbackOpenAiModel = process.env.OPENAI_MODEL || "gpt-4o-mini"
   const fallbackGroqModel = process.env.GROQ_MODEL || "llama3-70b-8192"
-  const openClawConfigured = Boolean(getOpenClawCredential())
+  const openClawConfigured = hasUsableOpenClawGateway()
   const fallbackAvailable = Boolean(openAiKey || groqKey)
 
   if (openClawConfigured) {
@@ -96,14 +89,6 @@ export async function resolveAgentModel(agent: OpenClawAgentId): Promise<{
       model: groq(fallbackGroqModel),
       provider: "groq",
       degradedFromOpenClaw: openClawConfigured,
-    }
-  }
-
-  if (openClawConfigured) {
-    return {
-      model: getOpenClawModel(agent),
-      provider: "openclaw",
-      degradedFromOpenClaw: false,
     }
   }
 

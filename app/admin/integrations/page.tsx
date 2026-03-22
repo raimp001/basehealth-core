@@ -11,6 +11,13 @@ type IntegrationStatusResponse = {
   success: boolean
   generatedAt?: string
   aiProvider?: string
+  openclaw?: {
+    gatewayUrlConfigured?: boolean
+    gatewayUrlHost?: string | null
+    gatewayAgentId?: string | null
+    configurationIssue?: string | null
+    reachable?: boolean | null
+  }
   features?: {
     chatPaywallEnabled?: boolean
   }
@@ -113,6 +120,9 @@ export default function IntegrationsAdminPage() {
                   {data.network.name} ({data.network.chainId})
                 </Badge>
               ) : null}
+              {data?.openclaw?.gatewayUrlConfigured ? (
+                <Badge variant="outline">OpenClaw host: {data.openclaw.gatewayUrlHost || "configured"}</Badge>
+              ) : null}
               {typeof data?.overallReady === "boolean" ? <StatusBadge ok={Boolean(data.overallReady)} /> : null}
             </div>
           </div>
@@ -181,7 +191,8 @@ export default function IntegrationsAdminPage() {
                     Set missing environment variables in Vercel (Production) and redeploy. For AI, set one of{" "}
                     <span className="font-mono">OPENCLAW_API_KEY</span> or{" "}
                     <span className="font-mono">OPENCLAW_GATEWAY_TOKEN</span> or{" "}
-                    <span className="font-mono">OPENCLAW_GATEWAY_PASSWORD</span> or{" "}
+                    <span className="font-mono">OPENCLAW_GATEWAY_PASSWORD</span> plus a reachable{" "}
+                    <span className="font-mono">OPENCLAW_GATEWAY_URL</span> for remote deployments, or use{" "}
                     <span className="font-mono">OPENAI_API_KEY</span> or <span className="font-mono">GROQ_API_KEY</span>.
                   </p>
                 </CardContent>

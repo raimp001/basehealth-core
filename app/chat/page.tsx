@@ -385,9 +385,10 @@ export default function ChatPage() {
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    Assistant configuration missing. Set <code className="font-mono">OPENCLAW_API_KEY</code> (recommended) or{" "}
+                    Assistant configuration missing. Set <code className="font-mono">OPENCLAW_API_KEY</code> or{" "}
                     <code className="font-mono">OPENCLAW_GATEWAY_TOKEN</code> or{" "}
-                    <code className="font-mono">OPENCLAW_GATEWAY_PASSWORD</code> or{" "}
+                    <code className="font-mono">OPENCLAW_GATEWAY_PASSWORD</code> plus{" "}
+                    <code className="font-mono">OPENCLAW_GATEWAY_URL</code> for remote deployments, or{" "}
                     <code className="font-mono">OPENAI_API_KEY</code>, then redeploy.
                   </p>
                   {assistantMeta?.generatedAt ? (

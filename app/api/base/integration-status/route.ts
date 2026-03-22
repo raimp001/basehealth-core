@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server"
 import { ACTIVE_CHAIN, PAYMENT_CONFIG } from "@/lib/network-config"
 import { getPrimaryAdminEmail } from "@/lib/admin-access"
+import { probeOpenClawGateway } from "@/lib/ai-provider"
+import {
+  getConfiguredPrimaryAiProvider,
+  getOpenClawConfigurationIssue,
+  getOpenClawCredential,
+  getOpenClawGatewayAgentId,
+  getOpenClawGatewayUrl,
+} from "@/lib/openclaw-gateway"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -27,49 +35,12 @@ function sectionReady(section: Section): boolean {
 export async function GET() {
   const chatPaywallEnabled = (process.env.BASEHEALTH_CHAT_PAYWALL || "false").toLowerCase() === "true"
 
-  const openclawKey =
-    process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_GATEWAY_TOKEN || process.env.OPENCLAW_GATEWAY_PASSWORD || ""
-
-  const openclawGatewayAgentId = (process.env.OPENCLAW_GATEWAY_AGENT_ID || "main").trim()
-
-  const openclawGatewayUrl = (process.env.OPENCLAW_GATEWAY_URL || "https://gateway.openclaw.ai")
-    .trim()
-    .replace(/\/$/, "")
-    .replace(/\/v1$/, "")
-
-  const openclawGatewayReachable = await (async () => {
-    if (!openclawKey) return null
-    try {
-      // Probe the OpenAI-compatible Chat Completions endpoint without incurring model costs.
-      // We intentionally send an invalid request body (empty messages) so the gateway can
-      // reject it quickly after auth/route checks.
-      const res = await fetch(`${openclawGatewayUrl}/v1/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openclawKey}`,
-          "Content-Type": "application/json",
-          "x-openclaw-agent-id": openclawGatewayAgentId,
-        },
-        body: JSON.stringify({ model: "openclaw", messages: [] }),
-        cache: "no-store",
-        // Keep the integrations page snappy even if the gateway is down.
-        signal: AbortSignal.timeout(2500),
-      })
-      if (res.status === 401 || res.status === 404) return false
-      return true
-    } catch {
-      return false
-    }
-  })()
-
-  const aiProvider =
-    process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_GATEWAY_TOKEN || process.env.OPENCLAW_GATEWAY_PASSWORD
-      ? "openclaw"
-      : process.env.OPENAI_API_KEY
-        ? "openai"
-        : process.env.GROQ_API_KEY
-          ? "groq"
-          : "none"
+  const openclawKey = getOpenClawCredential()
+  const openclawGatewayAgentId = getOpenClawGatewayAgentId()
+  const openclawGatewayUrl = getOpenClawGatewayUrl()
+  const openclawConfigurationIssue = getOpenClawConfigurationIssue()
+  const openclawGatewayReachable = openclawKey && openclawGatewayUrl ? await probeOpenClawGateway(2500, 0) : null
+  const aiProvider = getConfiguredPrimaryAiProvider()
 
   const sections: Section[] = [
     {
@@ -148,30 +119,37 @@ export async function GET() {
           id: "ai-provider",
           label: "AI provider configured",
           required: true,
-          passed: Boolean(
-            process.env.OPENCLAW_API_KEY ||
-              process.env.OPENCLAW_GATEWAY_TOKEN ||
-              process.env.OPENCLAW_GATEWAY_PASSWORD ||
-              process.env.OPENAI_API_KEY ||
-              process.env.GROQ_API_KEY,
-          ),
-          help: "Required for /chat. Set OPENCLAW_API_KEY (recommended) or OPENCLAW_GATEWAY_TOKEN or OPENCLAW_GATEWAY_PASSWORD or OPENAI_API_KEY or GROQ_API_KEY in your deployment environment, then redeploy.",
+          passed: aiProvider !== "none",
+          help:
+            "Required for /chat. Use OpenClaw only when the gateway itself is reachable from this deployment. Otherwise configure OPENAI_API_KEY or GROQ_API_KEY as fallback.",
         },
         {
           id: "openclaw",
           label: "OpenClaw key configured (recommended)",
           env: "OPENCLAW_API_KEY / OPENCLAW_GATEWAY_TOKEN / OPENCLAW_GATEWAY_PASSWORD",
           required: false,
-          passed: Boolean(process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_GATEWAY_TOKEN || process.env.OPENCLAW_GATEWAY_PASSWORD),
+          passed: Boolean(openclawKey),
           help: "Enables multi-agent routing with provider-managed models (supports OPENCLAW_API_KEY or OPENCLAW_GATEWAY_TOKEN or OPENCLAW_GATEWAY_PASSWORD).",
+        },
+        {
+          id: "openclaw-url",
+          label: "OpenClaw gateway URL configured for this runtime",
+          env: "OPENCLAW_GATEWAY_URL",
+          required: false,
+          passed: !openclawKey || Boolean(openclawGatewayUrl),
+          help:
+            "Remote deployments such as Vercel need an explicit OPENCLAW_GATEWAY_URL that points to your reachable gateway or tunnel. A token alone is not enough because OpenClaw gateways are usually self-hosted.",
         },
         {
           id: "openclaw-reachable",
           label: "OpenClaw gateway reachable",
           env: "OPENCLAW_GATEWAY_URL + (OPENCLAW_API_KEY | OPENCLAW_GATEWAY_TOKEN | OPENCLAW_GATEWAY_PASSWORD)",
           required: false,
-          passed: openclawKey ? Boolean(openclawGatewayReachable) : true,
-          help: "Diagnostic check only. If using OpenClaw, gateway reachability can fail temporarily; chat should still be allowed when an AI provider key is configured.",
+          passed: openclawKey && openclawGatewayUrl ? Boolean(openclawGatewayReachable) : true,
+          help:
+            openclawConfigurationIssue === "missing_url"
+              ? "OpenClaw is not reachable here because OPENCLAW_GATEWAY_URL is missing. Point it at the actual HTTPS gateway or tunnel exposed from the OpenClaw host."
+              : "Diagnostic check only. If using OpenClaw, gateway reachability can fail temporarily; chat should still be allowed when an AI provider key is configured.",
         },
         {
           id: "openai",
@@ -326,6 +304,13 @@ export async function GET() {
     },
     overallReady: missingRequired.length === 0,
     aiProvider,
+    openclaw: {
+      gatewayUrlConfigured: Boolean(openclawGatewayUrl),
+      gatewayUrlHost: openclawGatewayUrl ? new URL(openclawGatewayUrl).host : null,
+      gatewayAgentId: openclawGatewayAgentId || null,
+      configurationIssue: openclawConfigurationIssue,
+      reachable: openclawKey && openclawGatewayUrl ? Boolean(openclawGatewayReachable) : null,
+    },
     sections: readiness,
     missingRequired,
   })
