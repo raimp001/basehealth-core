@@ -54,6 +54,13 @@ const DEFAULT_EXAMPLES = [
   "What should I track before I see a doctor about this?",
 ]
 
+const ASSISTANT_CAPABILITIES = [
+  "Screenings and prevention",
+  "Provider and caregiver search",
+  "Appointment and order follow-up",
+  "Billing, refunds, and Base checkout",
+]
+
 const ASSISTANT_PASS_SERVICE_TYPE = "assistant-pass-chat"
 const ASSISTANT_PASS_USD = 0.25
 
@@ -327,14 +334,24 @@ export default function ChatPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-3xl">
-            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">BaseHealth Assistant</h1>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">BaseHealth Assistant</p>
+            <h1 className="mt-2 text-2xl sm:text-4xl font-semibold tracking-tight">Ask once. We route the work.</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              One chat, many specialists. We leverage OpenClaw agents to break operational bottlenecks: billing + refunds,
-              prior auth checklists, lab and record summaries, care navigation, and workflow orchestration (provider search,
-              order status, and one-tap checkout) so nothing gets missed.
+              Describe what you need in plain language. BaseHealth decides whether the next step is screening, care
+              navigation, provider search, order follow-up, or payment help without making you pick an internal agent.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {ASSISTANT_CAPABILITIES.map((item) => (
+                <span
+                  key={item}
+                  className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-xs text-muted-foreground"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <Link href="/support" className="text-muted-foreground hover:text-foreground hover:underline underline-offset-4">
@@ -501,6 +518,14 @@ export default function ChatPage() {
         )}
 
         <Card className="border-border shadow-sm overflow-hidden bg-background">
+          <div className="border-b border-border bg-muted/15 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full border border-border/60 bg-background px-2.5 py-1">Patients stay in one chat</span>
+              <span className="rounded-full border border-border/60 bg-background px-2.5 py-1">Internal specialists route behind the scenes</span>
+              <span className="rounded-full border border-border/60 bg-background px-2.5 py-1">Escalate urgent symptoms in person</span>
+            </div>
+          </div>
+
           <div className="h-[560px] overflow-y-auto p-4 space-y-4 bg-muted/20">
             {messages.map((message: any) => {
               const content = getMessageContent(message)
@@ -694,8 +719,10 @@ export default function ChatPage() {
             })}
 
             {!hasSentMessage && messages.length <= 1 && (
-              <div className="bg-background border border-dashed border-border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground mb-2">Try asking:</p>
+              <div className="rounded-2xl border border-dashed border-border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                  Good starting prompts
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {examples.map((question) => {
                     const disabled = !canChat
@@ -705,7 +732,7 @@ export default function ChatPage() {
                         onClick={() => {
                           if (!disabled) setInput(question)
                         }}
-                        className={`text-xs px-3 py-1.5 rounded-full transition-colors ${
+                        className={`text-xs px-3 py-2 rounded-full transition-colors ${
                           disabled
                             ? "bg-muted/40 text-muted-foreground cursor-not-allowed"
                             : "bg-muted hover:bg-muted/80 text-foreground"
@@ -778,6 +805,21 @@ export default function ChatPage() {
               <span>
                 Informational support only. Not a diagnosis tool. Contact licensed clinicians for medical decisions.
               </span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <Link href="/providers/search" className="hover:text-foreground hover:underline underline-offset-4">
+                Find care
+              </Link>
+              <Link href="/screening" className="hover:text-foreground hover:underline underline-offset-4">
+                Start screening
+              </Link>
+              <Link href="/support" className="hover:text-foreground hover:underline underline-offset-4">
+                Tip or support growth
+              </Link>
+              <Link href="/feedback" className="hover:text-foreground hover:underline underline-offset-4">
+                Send feedback
+              </Link>
             </div>
           </div>
         </Card>

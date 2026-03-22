@@ -730,11 +730,48 @@ export default function ScreeningPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto w-full max-w-xl px-4 sm:px-6 py-10">
-        <header className={`text-center mb-8 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Health screening assessment</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Get personalized USPSTF Grade A &amp; B recommendations.
-          </p>
+        <header className={`mb-8 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Screening
+                </p>
+                <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight">Health screening assessment</h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Four short steps. Pay only when the questionnaire is done and your recommendations are ready.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground">
+                <CreditCard className="h-3.5 w-3.5" />
+                ${ASSESSMENT_FEE_USD.toFixed(2)} after questionnaire
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-border bg-background p-3">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-foreground">USPSTF-focused</p>
+                <p className="mt-1 text-sm text-muted-foreground">Centered on Grade A and B screening recommendations.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-3">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-foreground">Minimal intake</p>
+                <p className="mt-1 text-sm text-muted-foreground">Only the details needed to personalize next steps.</p>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-3">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-foreground">Actionable output</p>
+                <p className="mt-1 text-sm text-muted-foreground">See what is due, who can do it, and what to book next.</p>
+              </div>
+            </div>
+          </div>
         </header>
 
         <div className="mb-8">
