@@ -3,6 +3,7 @@ import "server-only"
 import { createOpenAI } from "@ai-sdk/openai"
 import type { CoreMessage } from "ai"
 import { logger } from "@/lib/logger"
+import { getOpenClawCredential, getOpenClawGatewayAgentId, getOpenClawGatewayUrl } from "@/lib/openclaw-gateway"
 import {
   OPENCLAW_AGENT_CATALOG,
   OPENCLAW_AGENT_IDS,
@@ -14,12 +15,6 @@ import {
 type AgentDefinition = (typeof OPENCLAW_AGENT_CATALOG)[OpenClawAgentId]
 
 const OPENCLAW_AGENTS = OPENCLAW_AGENT_CATALOG
-
-// OPENCLAW_GATEWAY_URL should be the gateway origin (no trailing /v1). We append /v1 below.
-const OPENCLAW_GATEWAY_URL = (process.env.OPENCLAW_GATEWAY_URL || "https://gateway.openclaw.ai")
-  .trim()
-  .replace(/\/$/, "")
-  .replace(/\/v1$/, "")
 
 function scoreMessageForAgent(content: string, agent: OpenClawAgentId): number {
   const lower = content.toLowerCase()
@@ -65,7 +60,7 @@ export function getAgentDefinition(agent: OpenClawAgentId): AgentDefinition {
 }
 
 export function isOpenClawConfigured(): boolean {
-  return Boolean(process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_GATEWAY_TOKEN || process.env.OPENCLAW_GATEWAY_PASSWORD)
+  return Boolean(getOpenClawCredential() && getOpenClawGatewayUrl())
 }
 
 function resolveOpenClawModel(agent: OpenClawAgentId): string {
@@ -102,14 +97,14 @@ function formatSkillPlaybook(skill?: OpenClawAgentSkillPlaybook | null): string 
 }
 
 export function getOpenClawModel(agent: OpenClawAgentId) {
-  const apiKey = process.env.OPENCLAW_API_KEY || process.env.OPENCLAW_GATEWAY_TOKEN || process.env.OPENCLAW_GATEWAY_PASSWORD
-  if (!apiKey) return null
-
-  const gatewayAgentId = (process.env.OPENCLAW_GATEWAY_AGENT_ID || "main").trim()
+  const apiKey = getOpenClawCredential()
+  const gatewayUrl = getOpenClawGatewayUrl()
+  const gatewayAgentId = getOpenClawGatewayAgentId()
+  if (!apiKey || !gatewayUrl) return null
 
   const openclaw = createOpenAI({
     apiKey,
-    baseURL: `${OPENCLAW_GATEWAY_URL}/v1`,
+    baseURL: `${gatewayUrl}/v1`,
     // OpenClaw Gateway uses this header (or a model prefix) to select the active agent.
     // Keeping this set ensures compatibility when using a Gateway token/password.
     headers: gatewayAgentId ? { "x-openclaw-agent-id": gatewayAgentId } : undefined,
