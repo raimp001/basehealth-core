@@ -55,9 +55,9 @@ const CAREGIVER_SPECIALTIES = [
 ]
 
 const QUICK_SEARCHES = [
-  { label: "Post-surgery in San Francisco", location: "San Francisco, CA", specialty: "Post-Surgery Care" },
-  { label: "Elder care in Portland", location: "Portland, OR", specialty: "Elder Care" },
-  { label: "Urgent caregiver in Seattle", location: "Seattle, WA", specialty: "" },
+  { label: "Post-surgery in California", location: "California", specialty: "Post-Surgery Care", urgent: false },
+  { label: "Elder care in Oregon", location: "Oregon", specialty: "Elder Care", urgent: false },
+  { label: "Urgent caregiver in Washington", location: "Washington", specialty: "", urgent: true },
 ]
 
 function isZipCode(input: string) {
@@ -160,11 +160,11 @@ export default function CaregiverSearchPage() {
     await searchCaregivers()
   }
 
-  const runQuickSearch = async (nextLocation: string, nextSpecialty: string) => {
-    setLocationInput(nextLocation)
-    setSpecialty(nextSpecialty)
-    setUrgentOnly(false)
-    await searchCaregivers(nextLocation, nextSpecialty, false)
+  const runQuickSearch = async (search: (typeof QUICK_SEARCHES)[number]) => {
+    setLocationInput(search.location)
+    setSpecialty(search.specialty)
+    setUrgentOnly(search.urgent)
+    await searchCaregivers(search.location, search.specialty, search.urgent)
   }
 
   return (
@@ -286,7 +286,7 @@ export default function CaregiverSearchPage() {
                   <button
                     key={item.label}
                     type="button"
-                    onClick={() => runQuickSearch(item.location, item.specialty)}
+                    onClick={() => runQuickSearch(item)}
                     className="rounded-full border border-border/60 bg-card/15 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-card/30 hover:text-foreground"
                   >
                     {item.label}

@@ -8,6 +8,96 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 
+const US_STATE_CODES: Record<string, string> = {
+  AL: "Alabama",
+  AK: "Alaska",
+  AZ: "Arizona",
+  AR: "Arkansas",
+  CA: "California",
+  CO: "Colorado",
+  CT: "Connecticut",
+  DE: "Delaware",
+  FL: "Florida",
+  GA: "Georgia",
+  HI: "Hawaii",
+  ID: "Idaho",
+  IL: "Illinois",
+  IN: "Indiana",
+  IA: "Iowa",
+  KS: "Kansas",
+  KY: "Kentucky",
+  LA: "Louisiana",
+  ME: "Maine",
+  MD: "Maryland",
+  MA: "Massachusetts",
+  MI: "Michigan",
+  MN: "Minnesota",
+  MS: "Mississippi",
+  MO: "Missouri",
+  MT: "Montana",
+  NE: "Nebraska",
+  NV: "Nevada",
+  NH: "New Hampshire",
+  NJ: "New Jersey",
+  NM: "New Mexico",
+  NY: "New York",
+  NC: "North Carolina",
+  ND: "North Dakota",
+  OH: "Ohio",
+  OK: "Oklahoma",
+  OR: "Oregon",
+  PA: "Pennsylvania",
+  RI: "Rhode Island",
+  SC: "South Carolina",
+  SD: "South Dakota",
+  TN: "Tennessee",
+  TX: "Texas",
+  UT: "Utah",
+  VT: "Vermont",
+  VA: "Virginia",
+  WA: "Washington",
+  WV: "West Virginia",
+  WI: "Wisconsin",
+  WY: "Wyoming",
+  DC: "District of Columbia",
+}
+
+const STATE_NAME_TO_CODE = Object.fromEntries(
+  Object.entries(US_STATE_CODES).map(([code, name]) => [name.toLowerCase(), code]),
+)
+
+function buildLocationTerms(input: string): string[] {
+  const trimmed = input.trim()
+  if (!trimmed) return []
+
+  const terms = new Set<string>()
+  const add = (value: string | undefined) => {
+    const normalized = value?.trim()
+    if (!normalized) return
+    terms.add(normalized)
+  }
+
+  add(trimmed)
+
+  const parts = trimmed
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  parts.forEach(add)
+
+  const tail = parts.at(-1) ?? trimmed
+  const upperTail = tail.toUpperCase()
+  const stateCode = US_STATE_CODES[upperTail] ? upperTail : STATE_NAME_TO_CODE[tail.toLowerCase()]
+
+  if (stateCode) {
+    add(stateCode)
+    add(US_STATE_CODES[stateCode])
+  }
+
+  return Array.from(terms)
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -39,9 +129,12 @@ export async function GET(req: NextRequest) {
           { serviceAreas: { has: zipCode } },
         ]
       } else if (location) {
+        const locationTerms = buildLocationTerms(location)
         whereClause.OR = [
-          { location: { contains: location, mode: "insensitive" } },
-          { serviceAreas: { hasSome: [location] } },
+          ...locationTerms.map((term) => ({
+            location: { contains: term, mode: "insensitive" as const },
+          })),
+          { serviceAreas: { hasSome: locationTerms } },
         ]
       }
 
