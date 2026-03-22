@@ -91,7 +91,7 @@ export function BasePayCheckout({
         orderId,
         providerId,
         providerWallet: providerWallet || basePayConfig.recipientAddress,
-        serviceType: 'consultation',
+        serviceType: serviceType || serviceName,
         serviceDescription: serviceDescription || serviceName,
         collectEmail,
       })
@@ -109,6 +109,7 @@ export function BasePayCheckout({
           expectedAmount: amount.toFixed(2),
           providerId,
           serviceType: serviceType || serviceName,
+          serviceDescription: serviceDescription || serviceName,
           patientEmail: payment.payerInfoResponses?.email,
         }),
       })
@@ -136,7 +137,7 @@ export function BasePayCheckout({
       setStep('error')
       onError?.(errorMessage)
     }
-  }, [amount, orderId, providerId, providerWallet, serviceName, serviceDescription, collectEmail, onSuccess, onError])
+  }, [amount, orderId, providerId, providerWallet, serviceName, serviceType, serviceDescription, collectEmail, onSuccess, onError])
   
   // Success state
   if (step === 'success' && result) {

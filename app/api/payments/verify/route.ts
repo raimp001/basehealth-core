@@ -35,6 +35,7 @@ interface VerifyRequest {
   providerName?: string
   providerEmail?: string
   serviceType?: string
+  serviceDescription?: string
   appointmentDate?: string
   providerId?: string
 }
@@ -149,6 +150,7 @@ export async function POST(request: NextRequest) {
             paymentProviderId: paymentId,
             paymentMetadata: {
               ...existingMetadata,
+              network: ACTIVE_CHAIN.name,
               payment: {
                 ...(existingMetadata.payment || {}),
                 txHash: paymentId,
@@ -157,6 +159,8 @@ export async function POST(request: NextRequest) {
                 sender: normalizedSender,
                 recipient: normalizedRecipient,
                 amount: verification.amount || expectedAmount,
+                serviceType: body.serviceType || undefined,
+                serviceDescription: body.serviceDescription || body.serviceType || undefined,
               },
             },
           },
@@ -184,6 +188,14 @@ export async function POST(request: NextRequest) {
               sender: normalizedSender,
               recipient: normalizedRecipient,
               network: ACTIVE_CHAIN.name,
+              serviceType: body.serviceType,
+              serviceDescription: body.serviceDescription || body.serviceType,
+              patientName: updatedBooking.user?.name || body.patientName,
+              patientEmail: updatedBooking.user?.email || body.patientEmail,
+              providerName:
+                `${updatedBooking.caregiver?.firstName || ''} ${updatedBooking.caregiver?.lastName || ''}`.trim() ||
+                body.providerName,
+              bookingStatus: updatedBooking.status,
             },
           },
         }).catch(() => null)
@@ -212,6 +224,11 @@ export async function POST(request: NextRequest) {
               recipient: normalizedRecipient,
               network: ACTIVE_CHAIN.name,
               serviceType: body.serviceType,
+              serviceDescription: body.serviceDescription || body.serviceType,
+              serviceLabel: body.serviceDescription || body.serviceType || "BaseHealth payment",
+              patientName: body.patientName,
+              patientEmail: body.patientEmail,
+              providerName: body.providerName,
               standalone: true,
             },
           },
@@ -228,6 +245,7 @@ export async function POST(request: NextRequest) {
         paymentProvider: 'BASE_USDC',
         paymentProviderId: paymentId,
         paymentMetadata: {
+          network: ACTIVE_CHAIN.name,
           payment: {
             txHash: paymentId,
             network: ACTIVE_CHAIN.name,
@@ -235,6 +253,8 @@ export async function POST(request: NextRequest) {
             sender: normalizedSender,
             recipient: normalizedRecipient,
             amount: verification.amount || expectedAmount,
+            serviceType: body.serviceType,
+            serviceDescription: body.serviceDescription || body.serviceType,
           },
         },
         createdAt: now,

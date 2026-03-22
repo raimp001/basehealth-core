@@ -49,6 +49,7 @@ export function SignInWithBase({
   const [isSigning, setIsSigning] = useState(false)
   const [copied, setCopied] = useState(false)
   const [sdk, setSdk] = useState<any>(null)
+  const [sdkLoading, setSdkLoading] = useState(false)
 
   const WALLET_STORAGE_KEY = "basehealth_wallet_address"
 
@@ -98,11 +99,41 @@ export function SignInWithBase({
     notifyWalletConnected(walletAddress)
   }, [walletAddress, notifyWalletConnected])
 
+  const ensureBaseAccountSdk = useCallback(async () => {
+    if (sdk) return sdk
+    if (sdkLoading) return null
+
+    setSdkLoading(true)
+    try {
+      const { createBaseAccountSDK } = await import('@base-org/account')
+      const baseSDK = createBaseAccountSDK({
+        appName: 'BaseHealth',
+        appLogoUrl: `${APP_URL}/icon-192.png`,
+        appChainIds: [8453, 84532],
+      })
+      setSdk(baseSDK)
+      return baseSDK
+    } catch (error) {
+      console.warn('Base Account SDK not available')
+      return null
+    } finally {
+      setSdkLoading(false)
+    }
+  }, [sdk, sdkLoading])
+
+  const getDirectProvider = useCallback(async () => {
+    if (isMiniApp) {
+      const miniAppProvider = await getEthereumProvider()
+      if (miniAppProvider) return miniAppProvider
+    }
+
+    const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null
+    return ethereum || null
+  }, [getEthereumProvider, isMiniApp])
+
   useEffect(() => {
     setMounted(true)
 
-    // Restore last known wallet address so other parts of the app can stay in sync even if the provider
-    // won't answer eth_accounts without an explicit user gesture.
     try {
       const saved = window.localStorage.getItem(WALLET_STORAGE_KEY) || ""
       if (saved && isWalletAddress(saved)) {
@@ -111,69 +142,55 @@ export function SignInWithBase({
     } catch {
       // ignore
     }
-    
-    // Initialize Base Account SDK
-    const initSDK = async () => {
+
+    let cancelled = false
+
+    const initWalletState = async () => {
+      const directProvider = await getDirectProvider()
+      if (directProvider) {
+        try {
+          const accounts = await directProvider.request({ method: "eth_accounts" })
+          if (!cancelled && typeof accounts?.[0] === "string" && isWalletAddress(accounts[0])) {
+            setWalletAddress((prev) => prev || accounts[0].trim())
+          }
+        } catch {
+          // ignore
+        }
+        return
+      }
+
+      const baseSdk = await ensureBaseAccountSdk()
       try {
-        const { createBaseAccountSDK } = await import('@base-org/account')
-        const baseSDK = createBaseAccountSDK({
-          appName: 'BaseHealth',
-          appLogoUrl: `${APP_URL}/icon-192.png`,
-          appChainIds: [8453, 84532], // Base Mainnet + Base Sepolia
-        })
-        setSdk(baseSDK)
-	        
-	        // Check if already connected
-	        try {
-	          const provider = baseSDK.getProvider()
-	          if (provider) {
-	            const accounts = await provider.request({ method: 'eth_accounts' })
-	            if (accounts && accounts.length > 0) {
-	              setWalletAddress(accounts[0])
-	            }
-	          }
-	        } catch {
-	          // Not connected yet
-	        }
-      } catch (error) {
-        console.warn('Base Account SDK not available, falling back to direct wallet')
-        // Check for existing wallet connection
-        checkDirectWallet()
+        const provider = baseSdk?.getProvider?.()
+        const accounts = provider ? await provider.request({ method: "eth_accounts" }) : []
+        if (!cancelled && typeof accounts?.[0] === "string" && isWalletAddress(accounts[0])) {
+          setWalletAddress((prev) => prev || accounts[0].trim())
+        }
+      } catch {
+        // ignore
       }
     }
-    
-    initSDK()
-  }, [])
 
-  const checkDirectWallet = async () => {
-    try {
-      const ethereum = (window as any).ethereum
-      if (!ethereum) return
-      
-      const accounts = await ethereum.request({ method: 'eth_accounts' })
-      if (accounts && accounts.length > 0) {
-        setWalletAddress(accounts[0])
-      }
-    } catch {
-      // No wallet
+    initWalletState()
+
+    return () => {
+      cancelled = true
     }
-  }
+  }, [ensureBaseAccountSdk, getDirectProvider])
 
-  const getProvider = async () => {
-    // Prefer the host wallet provider when running inside a mini app.
-    if (isMiniApp) {
-      const miniAppProvider = await getEthereumProvider()
-      if (miniAppProvider) return miniAppProvider
-    }
+  const getProvider = useCallback(async () => {
+    // Prefer the host wallet provider first so Base app / Coinbase Wallet / injected wallets
+    // do not fall through to the Base Account email/passkey flow unexpectedly.
+    const directProvider = await getDirectProvider()
+    if (directProvider) return directProvider
 
-    if (sdk) {
-      const baseAccountProvider = sdk.getProvider()
+    const availableSdk = sdk || (await ensureBaseAccountSdk())
+    if (availableSdk) {
+      const baseAccountProvider = availableSdk.getProvider()
       if (baseAccountProvider) return baseAccountProvider
     }
-
-    const ethereum = (window as any).ethereum
-    return ethereum || null
-  }
+    return null
+  }, [ensureBaseAccountSdk, getDirectProvider, sdk])
 
   const connectWallet = useCallback(async () => {
     setIsConnecting(true)
@@ -235,7 +252,7 @@ export function SignInWithBase({
     } finally {
       setIsConnecting(false)
     }
-  }, [sdk, isMiniApp, getEthereumProvider, onAuthError])
+  }, [getProvider, isMiniApp, onAuthError])
 
   const signInToBaseHealth = useCallback(
     async (address: string) => {
@@ -315,7 +332,7 @@ export function SignInWithBase({
         setIsSigning(false)
       }
     },
-    [sdk, isMiniApp, getEthereumProvider, onAuthSuccess, onAuthError],
+    [getProvider, onAuthSuccess, onAuthError],
   )
 
   const handleSignIn = useCallback(async () => {
@@ -364,6 +381,7 @@ export function SignInWithBase({
       .trim()
       .slice(0, 1)
       .toUpperCase()
+  const isAuthenticated = sessionStatus === "authenticated"
 
   // Prevent hydration errors
   if (!mounted) {
@@ -403,6 +421,28 @@ export function SignInWithBase({
     )
   }
 
+  if (mode === "signin" && !isAuthenticated) {
+    return (
+      <div className={`flex flex-col gap-2 ${className}`}>
+        <button
+          onClick={() => signInToBaseHealth(walletAddress)}
+          disabled={isSigning || isConnecting}
+          className="inline-flex items-center justify-center gap-2.5 rounded-full h-10 px-5 font-semibold shadow-glow-subtle transition-colors hover:bg-accent/90 active:scale-[0.98] disabled:opacity-60 bg-accent text-accent-foreground"
+        >
+          <Wallet className="h-4 w-4" />
+          {isSigning ? "Signing..." : "Complete BaseHealth sign-in"}
+        </button>
+        <button
+          onClick={handleSignOut}
+          type="button"
+          className="inline-flex items-center justify-center gap-2 rounded-full h-10 px-5 font-medium border border-border/60 bg-card/25 text-foreground transition-colors hover:bg-card/35"
+        >
+          Disconnect {formatAddress(walletAddress)}
+        </button>
+      </div>
+    )
+  }
+
   // Connected - show wallet menu
   return (
     <DropdownMenu>
@@ -432,11 +472,11 @@ export function SignInWithBase({
             <div className="min-w-0">
               <div className="text-sm font-semibold leading-tight truncate">{profileName}</div>
               <div className="text-xs text-muted-foreground leading-tight truncate">
-                {profileHandle ?? (sessionStatus === "authenticated" ? "Signed in" : "Wallet connected")}
+                {profileHandle ?? (isAuthenticated ? "Recognized by BaseHealth" : "Wallet connected")}
               </div>
             </div>
             <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full border border-accent/20 bg-accent/10 text-accent">
-              Base
+              {isAuthenticated ? "Signed in" : "Wallet only"}
             </span>
           </div>
         </DropdownMenuLabel>

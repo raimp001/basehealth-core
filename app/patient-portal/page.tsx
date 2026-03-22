@@ -20,6 +20,7 @@ import { useMiniApp } from "@/components/providers/miniapp-provider"
 type BillingReceipt = {
   receiptId: string
   bookingId: string
+  source: "booking" | "transaction"
   amount: string
   currency: string
   bookingStatus: string
@@ -28,6 +29,7 @@ type BillingReceipt = {
   issuedAt: string
   paidAt?: string
   providerName?: string
+  description?: string
   paymentTxHash?: string
   paymentExplorerUrl?: string
 }
@@ -225,7 +227,7 @@ export default function PatientPortalPage() {
                         >
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {receipt.providerName || "Receipt"} • ${receipt.amount} {receipt.currency}
+                              {receipt.description || receipt.providerName || "Receipt"} • ${receipt.amount} {receipt.currency}
                             </p>
                             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                               {new Date(receipt.issuedAt).toLocaleString(undefined, {
@@ -234,6 +236,7 @@ export default function PatientPortalPage() {
                                 day: "numeric",
                               })}{" "}
                               • {receipt.paymentStatus.toLowerCase()}
+                              {receipt.source === "transaction" ? " • standalone" : ""}
                             </p>
                           </div>
 
@@ -275,7 +278,11 @@ export default function PatientPortalPage() {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{displayName}</p>
                       <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
-                        {walletAddress ? "Wallet connected" : "Not connected"}
+                        {walletAddress
+                          ? sessionStatus === "authenticated"
+                            ? "BaseHealth account recognized"
+                            : "Wallet connected"
+                          : "Not connected"}
                       </p>
                     </div>
                   </div>

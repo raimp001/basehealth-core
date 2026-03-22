@@ -11,8 +11,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
-import { openai } from "@ai-sdk/openai"
 import { generateText, streamText } from "ai"
+import { resolveBasicModel } from "@/lib/ai-provider"
 import { sanitizeInput } from "@/lib/phiScrubber"
 import { logger } from "@/lib/logger"
 
@@ -58,18 +58,18 @@ export async function POST(req: NextRequest) {
     logger.debug(`Input scrubbed: ${Object.keys(mapping).length} PHI elements detected`)
 
     // Check if API key is configured
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      logger.error("OPENAI_API_KEY not configured")
+    const { model, provider } = await resolveBasicModel({
+      openAiModel: options.model || "gpt-4o",
+      groqModel: options.model || process.env.GROQ_MODEL || "llama3-70b-8192",
+    })
+
+    if (!model) {
+      logger.error("No AI provider configured")
       return NextResponse.json(
         { error: "AI service is not configured. Please contact support." },
         { status: 500 }
       )
     }
-
-    // Prepare model (default to gpt-4o)
-    const modelName = options.model || "gpt-4o"
-    const model = openai(modelName)
 
     // Prepare system prompt (if provided)
     const systemPrompt = options.systemPrompt || 
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     const duration = Date.now() - startTime
 
     // Log success (without PHI)
-    logger.info(`Request completed successfully`, { duration: `${duration}ms` })
+    logger.info(`Request completed successfully`, { duration: `${duration}ms`, provider })
 
     return NextResponse.json({
       success: true,
