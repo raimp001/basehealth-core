@@ -1,8 +1,8 @@
-import { openai } from "@ai-sdk/openai"
 import { groq } from "@ai-sdk/groq"
 import { createDataStreamResponse, formatDataStreamPart, generateText, streamText } from "ai"
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
+import { hasConfiguredAiProvider, resolveAgentModel } from "@/lib/ai-provider"
 import { sanitizeInput } from "@/lib/phiScrubber"
 import { logger } from "@/lib/logger"
 import { ASSISTANT_PASS, getAssistantPassStatus, isWalletAddress } from "@/lib/assistant-pass"
@@ -62,13 +62,7 @@ export async function POST(req: Request) {
 
     // If the assistant backend isn't configured, don't gate behind payments.
     // (Users shouldn't pay for an offline feature.)
-    const aiConfigured = Boolean(
-      process.env.OPENCLAW_API_KEY ||
-        process.env.OPENCLAW_GATEWAY_TOKEN ||
-        process.env.OPENCLAW_GATEWAY_PASSWORD ||
-        process.env.OPENAI_API_KEY ||
-        process.env.GROQ_API_KEY,
-    )
+    const aiConfigured = hasConfiguredAiProvider()
 
     if (!aiConfigured) {
       logger.warn("Chat request blocked: AI not configured", {
@@ -176,19 +170,7 @@ export async function POST(req: Request) {
       context,
     })
 
-    const openClawModel = getOpenClawModel(selectedAgent)
-    const openAiKey = process.env.OPENAI_API_KEY
-    const groqKey = process.env.GROQ_API_KEY
-
-    const fallbackOpenAiModel = process.env.OPENAI_MODEL || "gpt-4o-mini"
-    const fallbackGroqModel = process.env.GROQ_MODEL || "llama3-70b-8192"
-
-    const model =
-      openClawModel ||
-      (openAiKey ? openai(fallbackOpenAiModel) : null) ||
-      (groqKey ? groq(fallbackGroqModel) : null)
-
-    const provider = openClawModel ? "openclaw" : openAiKey ? "openai" : groqKey ? "groq" : "none"
+    const { model, provider, degradedFromOpenClaw } = await resolveAgentModel(selectedAgent)
 
     if (!model) {
       logger.warn("Chat request blocked: AI not configured", {
@@ -242,7 +224,7 @@ export async function POST(req: Request) {
                 context,
               })
 
-              const peerModel = getOpenClawModel(agent) || model
+              const peerModel = provider === "openclaw" ? getOpenClawModel(agent) || model : model
               const peer = await generateText({
                 model: peerModel,
                 messages: [{ role: "system", content: peerSystemPrompt }, ...peerMessages],
@@ -276,6 +258,7 @@ export async function POST(req: Request) {
       agent: selectedAgent,
       hasContext: Boolean(context),
       collaborators: collaboratorAgents.length,
+      degradedFromOpenClaw,
     })
 
     let session: any = null
@@ -328,6 +311,7 @@ export async function POST(req: Request) {
     response.headers.set("x-basehealth-agent", selectedAgent)
     response.headers.set("x-basehealth-llm-provider", provider)
     response.headers.set("x-basehealth-agent-mesh", collaboratorAgents.join(",") || "none")
+    response.headers.set("x-basehealth-ai-degraded", degradedFromOpenClaw ? "true" : "false")
     return response
   } catch (error) {
     logger.error("Error in chat API", error)

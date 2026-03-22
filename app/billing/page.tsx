@@ -9,6 +9,7 @@ import { useMiniApp } from "@/components/providers/miniapp-provider"
 type BillingReceipt = {
   receiptId: string
   bookingId: string
+  source: "booking" | "transaction"
   amount: string
   currency: string
   bookingStatus: string
@@ -17,8 +18,12 @@ type BillingReceipt = {
   issuedAt: string
   paidAt?: string
   providerName?: string
+  description?: string
   paymentTxHash?: string
   paymentExplorerUrl?: string
+  refundExplorerUrl?: string
+  refundReason?: string
+  refundAmount?: string
 }
 
 export default function BillingPage() {
@@ -173,7 +178,7 @@ export default function BillingPage() {
                       >
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">
-                            {receipt.providerName || "Receipt"} • ${receipt.amount} {receipt.currency}
+                            {receipt.description || receipt.providerName || "Receipt"} • ${receipt.amount} {receipt.currency}
                           </p>
                           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
                             {new Date(receipt.issuedAt).toLocaleString(undefined, {
@@ -182,24 +187,44 @@ export default function BillingPage() {
                               day: "numeric",
                             })}{" "}
                             • {receipt.paymentStatus.toLowerCase()}
+                            {receipt.source === "transaction" ? " • standalone" : ""}
                           </p>
+                          {receipt.refundReason ? (
+                            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                              Refund: {receipt.refundReason}
+                              {receipt.refundAmount ? ` (${receipt.refundAmount} ${receipt.currency})` : ""}
+                            </p>
+                          ) : null}
                         </div>
 
-                        {receipt.paymentExplorerUrl ? (
-                          <a
-                            href={receipt.paymentExplorerUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs whitespace-nowrap"
-                            style={{ color: "var(--text-muted)" }}
-                          >
-                            Explorer <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                            <Receipt className="h-3 w-3" /> {receipt.paymentProvider}
-                          </span>
-                        )}
+                        <div className="flex flex-col items-end gap-2">
+                          {receipt.paymentExplorerUrl ? (
+                            <a
+                              href={receipt.paymentExplorerUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs whitespace-nowrap"
+                              style={{ color: "var(--text-muted)" }}
+                            >
+                              Payment <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
+                              <Receipt className="h-3 w-3" /> {receipt.paymentProvider}
+                            </span>
+                          )}
+                          {receipt.refundExplorerUrl ? (
+                            <a
+                              href={receipt.refundExplorerUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs whitespace-nowrap"
+                              style={{ color: "var(--text-muted)" }}
+                            >
+                              Refund <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -222,4 +247,3 @@ export default function BillingPage() {
     </div>
   )
 }
-

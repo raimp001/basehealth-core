@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { createBillingReceipt } from "@/lib/base-billing"
+import { createBillingReceipt, createTransactionReceipt } from "@/lib/base-billing"
 
 /**
  * Billing Receipts API
@@ -45,15 +45,7 @@ export async function GET(request: NextRequest) {
         select: { id: true },
       })
 
-      if (users.length === 0) {
-        return NextResponse.json({
-          success: true,
-          receipts: [],
-          total: 0,
-        })
-      }
-
-      where.userId = { in: users.map((user) => user.id) }
+      where.userId = users.length > 0 ? { in: users.map((user) => user.id) } : "__no_matching_user__"
     }
 
     const lookupLimit = normalizedWallet && !email ? Math.max(limit, 100) : limit
@@ -76,7 +68,39 @@ export async function GET(request: NextRequest) {
         })
       : bookings
 
-    const receipts = filteredBookings.slice(0, limit).map((booking) => createBillingReceipt(booking))
+    const bookingReceipts = filteredBookings.map((booking) => createBillingReceipt(booking))
+
+    const standaloneTransactions = await prisma.transaction.findMany({
+      where: {
+        bookingId: null,
+      },
+      orderBy: [{ completedAt: "desc" }, { createdAt: "desc" }],
+      take: Math.max(limit * 4, 80),
+    })
+
+    const filteredTransactions = standaloneTransactions.filter((transaction) => {
+      const metadata = (transaction.metadata || {}) as any
+      const sender = typeof metadata?.sender === "string" ? metadata.sender.toLowerCase() : ""
+      const emailCandidates = [
+        metadata?.patientEmail,
+        metadata?.email,
+      ]
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim().toLowerCase())
+
+      const walletMatches = normalizedWallet ? sender === normalizedWallet : true
+      const emailMatches = email ? emailCandidates.includes(email.toLowerCase()) : true
+      return walletMatches && emailMatches
+    })
+
+    const transactionReceipts = filteredTransactions.map((transaction) => createTransactionReceipt(transaction))
+    const receipts = [...bookingReceipts, ...transactionReceipts]
+      .sort((left, right) => {
+        const leftTs = Date.parse(left.paidAt || left.issuedAt)
+        const rightTs = Date.parse(right.paidAt || right.issuedAt)
+        return rightTs - leftTs
+      })
+      .slice(0, limit)
 
     return NextResponse.json({
       success: true,

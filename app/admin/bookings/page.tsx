@@ -8,10 +8,8 @@ import {
   DollarSign, 
   AlertCircle, 
   CheckCircle,
-  XCircle,
   RefreshCw,
   MapPin,
-  Clock,
   User,
   Loader2
 } from "lucide-react"
@@ -28,6 +26,10 @@ interface Booking {
   createdAt: string
   paymentProvider: string | null
   paymentMetadata?: {
+    payment?: {
+      txHash?: string
+      explorerUrl?: string
+    }
     refund?: {
       txHash?: string
       explorerUrl?: string
@@ -50,6 +52,10 @@ export default function AdminBookingsPage() {
   const [filter, setFilter] = useState<string>('all')
   const [refundingId, setRefundingId] = useState<string | null>(null)
   const [refundReason, setRefundReason] = useState('')
+  const [refundAmount, setRefundAmount] = useState('')
+  const [refundTxHash, setRefundTxHash] = useState('')
+  const [refundError, setRefundError] = useState<string | null>(null)
+  const [refundSuccess, setRefundSuccess] = useState<string | null>(null)
   const [showRefundModal, setShowRefundModal] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
 
@@ -80,13 +86,26 @@ export default function AdminBookingsPage() {
 
   const handleRefund = async () => {
     if (!selectedBooking || !refundReason) return
+
+    const requiresOnchainRefundTx = ['BASE_USDC', 'COINBASE_ONCHAIN', 'BASE_ETH'].includes(selectedBooking.paymentProvider || '')
+    setRefundError(null)
+    setRefundSuccess(null)
+
+    if (requiresOnchainRefundTx && !/^0x[a-fA-F0-9]{64}$/.test(refundTxHash.trim())) {
+      setRefundError('Paste the onchain refund transaction hash after sending the refund from the treasury wallet.')
+      return
+    }
     
     setRefundingId(selectedBooking.id)
     try {
       const response = await fetch(`/api/admin/bookings/${selectedBooking.id}/refund`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: refundReason }),
+        body: JSON.stringify({
+          reason: refundReason,
+          refundAmount: refundAmount ? Number.parseFloat(refundAmount) : selectedBooking.amount,
+          txHash: refundTxHash.trim() || undefined,
+        }),
       })
       
       const data = await response.json()
@@ -95,17 +114,33 @@ export default function AdminBookingsPage() {
         // Update local state
         setBookings(bookings.map(b => 
           b.id === selectedBooking.id 
-            ? { ...b, status: 'REFUNDED', paymentStatus: 'REFUNDED' }
+            ? {
+                ...b,
+                status: 'REFUNDED',
+                paymentStatus: 'REFUNDED',
+                paymentMetadata: {
+                  ...(b.paymentMetadata || {}),
+                  refund: {
+                    txHash: data.booking?.refundTxHash,
+                    explorerUrl: data.booking?.refundExplorerUrl,
+                    amount: data.booking?.refundAmount,
+                    reason: data.booking?.refundReason,
+                  },
+                },
+              }
             : b
         ))
+        setRefundSuccess(data.booking?.refundExplorerUrl ? 'Refund recorded. Explorer link added to the booking.' : 'Refund recorded successfully.')
         setShowRefundModal(false)
         setRefundReason('')
+        setRefundAmount('')
+        setRefundTxHash('')
         setSelectedBooking(null)
       } else {
-        alert(`Refund failed: ${data.error}`)
+        setRefundError(data.error || 'Refund failed')
       }
     } catch (err) {
-      alert('Failed to process refund')
+      setRefundError('Failed to process refund')
     } finally {
       setRefundingId(null)
     }
@@ -184,6 +219,13 @@ export default function AdminBookingsPage() {
           </div>
         )}
 
+        {refundSuccess && (
+          <div className="p-4 mb-6 rounded-lg bg-green-50 text-green-700 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            {refundSuccess}
+          </div>
+        )}
+
         {/* Loading */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -250,6 +292,10 @@ export default function AdminBookingsPage() {
                     <button
                       onClick={() => {
                         setSelectedBooking(booking)
+                        setRefundReason('')
+                        setRefundAmount(booking.amount ? String(booking.amount) : '')
+                        setRefundTxHash('')
+                        setRefundError(null)
                         setShowRefundModal(true)
                       }}
                       className="px-4 py-2 rounded-lg text-white font-medium"
@@ -308,7 +354,36 @@ export default function AdminBookingsPage() {
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Customer: {selectedBooking.user?.email}
               </p>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Payment provider: {selectedBooking.paymentProvider || 'Unknown'}
+              </p>
             </div>
+
+            {['BASE_USDC', 'COINBASE_ONCHAIN', 'BASE_ETH'].includes(selectedBooking.paymentProvider || '') && (
+              <div
+                className="mb-4 rounded-lg border p-4 text-sm"
+                style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-secondary)' }}
+              >
+                <p className="font-medium mb-1">Base refund workflow</p>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  Send the refund from the treasury wallet first, then paste the refund transaction hash below so
+                  receipts, refund status, and audit history stay consistent.
+                </p>
+              </div>
+            )}
+
+            <label className="block mb-4">
+              <span className="text-sm font-medium mb-2 block">Refund amount</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+                className="w-full p-3 rounded-lg border"
+                style={{ borderColor: 'var(--border-medium)' }}
+              />
+            </label>
 
             <label className="block mb-4">
               <span className="text-sm font-medium mb-2 block">Reason for refund *</span>
@@ -322,12 +397,35 @@ export default function AdminBookingsPage() {
               />
             </label>
 
+            {['BASE_USDC', 'COINBASE_ONCHAIN', 'BASE_ETH'].includes(selectedBooking.paymentProvider || '') && (
+              <label className="block mb-4">
+                <span className="text-sm font-medium mb-2 block">Refund transaction hash *</span>
+                <input
+                  type="text"
+                  value={refundTxHash}
+                  onChange={(e) => setRefundTxHash(e.target.value)}
+                  placeholder="0x..."
+                  className="w-full p-3 rounded-lg border font-mono text-sm"
+                  style={{ borderColor: 'var(--border-medium)' }}
+                />
+              </label>
+            )}
+
+            {refundError && (
+              <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {refundError}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowRefundModal(false)
                   setSelectedBooking(null)
                   setRefundReason('')
+                  setRefundAmount('')
+                  setRefundTxHash('')
+                  setRefundError(null)
                 }}
                 className="flex-1 py-3 rounded-lg border font-medium"
                 style={{ borderColor: 'var(--border-medium)' }}
