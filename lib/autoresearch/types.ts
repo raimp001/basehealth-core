@@ -54,6 +54,8 @@ export interface AutoResearchAwsConfig {
   ecsService: string | null
   ecsTaskDefinition: string | null
   cloudWatchLogGroup: string | null
+  credentialsConfigured: boolean
+  credentialSource: "env" | "role" | null
   configured: boolean
 }
 

@@ -1,0 +1,13 @@
+.git
+.gitignore
+.next
+node_modules
+.clawdbot
+coverage
+vercel
+.vercel
+playwright-report
+test-results
+*.log
+.env*
+!.env.example

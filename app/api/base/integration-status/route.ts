@@ -318,6 +318,14 @@ export async function GET() {
           help: "Optional for queue-based execution through SQS, S3, and an ECS/Fargate worker.",
         },
         {
+          id: "research-aws-credentials",
+          label: "AWS credentials or role available",
+          env: "AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or IAM role",
+          required: false,
+          passed: autoResearchConfig.aws.credentialsConfigured,
+          help: "Needed anywhere the app or worker talks to SQS/S3. Use env credentials on Vercel or an attached IAM role on ECS.",
+        },
+        {
           id: "research-auto-apply",
           label: "Patch auto-apply explicitly enabled",
           env: "CLAWDBOT_ALLOW_AUTO_APPLY",
@@ -371,6 +379,7 @@ export async function GET() {
         autoResearchConfig.openclawConfigured ||
         autoResearchConfig.openaiConfigured ||
         autoResearchConfig.groqConfigured,
+      awsCredentialsConfigured: autoResearchConfig.aws.credentialsConfigured,
       aws: autoResearchConfig.aws,
     },
     network: {

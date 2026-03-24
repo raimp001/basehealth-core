@@ -17,8 +17,9 @@
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
     "e2e:headed": "playwright test --headed",
-    "autoresearch:worker:aws": "tsx scripts/autoresearch-aws-worker.ts",
-    "autoresearch:worker:aws:once": "tsx scripts/autoresearch-aws-worker.ts --once"
+    "autoresearch:worker:aws": "node --import tsx scripts/autoresearch-aws-worker.ts",
+    "autoresearch:worker:aws:once": "node --import tsx scripts/autoresearch-aws-worker.ts --once",
+    "autoresearch:aws:deploy": "bash scripts/deploy-autoresearch-aws.sh"
   },
   "dependencies": {
     "@ai-sdk/groq": "^1.0.8",

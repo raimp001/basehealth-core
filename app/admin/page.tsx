@@ -239,7 +239,7 @@ export default function AdminPortalPage() {
                         <div>
                           <p className="font-medium">Auto-Research Worker</p>
                           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                            Run local OpenClaw-guided research loops with saved history
+                            Run local or AWS-backed research loops with saved history
                           </p>
                         </div>
                       </div>

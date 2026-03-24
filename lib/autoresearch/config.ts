@@ -40,6 +40,22 @@ export const DEFAULT_AUTO_RESEARCH_SETTINGS: AutoResearchSettings = {
   evaluationCommand: "",
 }
 
+function getAutoResearchAwsCredentialSource(): "env" | "role" | null {
+  if (process.env.AWS_ACCESS_KEY_ID?.trim() && process.env.AWS_SECRET_ACCESS_KEY?.trim()) {
+    return "env"
+  }
+
+  if (
+    process.env.AWS_WEB_IDENTITY_TOKEN_FILE?.trim() ||
+    process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI?.trim() ||
+    process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI?.trim()
+  ) {
+    return "role"
+  }
+
+  return null
+}
+
 export function getAutoResearchAwsConfig(): AutoResearchAwsConfig {
   const region = (process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "").trim() || null
   const sqsQueueUrl = (process.env.CLAWDBOT_AWS_SQS_QUEUE_URL || "").trim() || null
@@ -49,6 +65,7 @@ export function getAutoResearchAwsConfig(): AutoResearchAwsConfig {
   const ecsService = (process.env.CLAWDBOT_AWS_ECS_SERVICE || "").trim() || null
   const ecsTaskDefinition = (process.env.CLAWDBOT_AWS_ECS_TASK_DEFINITION || "").trim() || null
   const cloudWatchLogGroup = (process.env.CLAWDBOT_AWS_CLOUDWATCH_LOG_GROUP || "").trim() || null
+  const credentialSource = getAutoResearchAwsCredentialSource()
 
   return {
     region,
@@ -59,6 +76,8 @@ export function getAutoResearchAwsConfig(): AutoResearchAwsConfig {
     ecsService,
     ecsTaskDefinition,
     cloudWatchLogGroup,
+    credentialsConfigured: Boolean(credentialSource),
+    credentialSource,
     configured: Boolean(region && sqsQueueUrl && s3Bucket),
   }
 }

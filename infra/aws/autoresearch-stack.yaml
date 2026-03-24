@@ -1,0 +1,330 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: BaseHealth auto-research worker stack (ECR + ECS/Fargate + SQS + S3 + CloudWatch)
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: basehealth-autoresearch-worker
+  WorkerImageUri:
+    Type: String
+    Description: Container image URI for the ECS task. Use a placeholder image for bootstrap, then update with the pushed ECR image.
+  DesiredCount:
+    Type: Number
+    Default: 0
+    MinValue: 0
+  TaskCpu:
+    Type: String
+    Default: '1024'
+    AllowedValues: ['256', '512', '1024', '2048', '4096']
+  TaskMemory:
+    Type: String
+    Default: '2048'
+    AllowedValues: ['512', '1024', '2048', '3072', '4096', '5120', '6144', '7168', '8192', '16384', '30720']
+  VpcSubnetIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated subnet IDs for the ECS service.
+  SecurityGroupIds:
+    Type: CommaDelimitedList
+    Description: Comma-separated security group IDs for the ECS service.
+  AssignPublicIp:
+    Type: String
+    Default: DISABLED
+    AllowedValues: [ENABLED, DISABLED]
+  S3Prefix:
+    Type: String
+    Default: autoresearch
+  WorkerPollSeconds:
+    Type: Number
+    Default: 20
+    MinValue: 1
+    MaxValue: 20
+  VisibilityTimeout:
+    Type: Number
+    Default: 300
+    MinValue: 30
+    MaxValue: 43200
+  AllowAutoApply:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  OpenClawGatewayUrl:
+    Type: String
+    Default: https://gateway.openclaw.ai
+  OpenClawGatewayAgentId:
+    Type: String
+    Default: main
+  OpenClawResearchModel:
+    Type: String
+    Default: gpt-4o-mini
+  OpenAiResearchModel:
+    Type: String
+    Default: gpt-4o-mini
+  GroqResearchModel:
+    Type: String
+    Default: llama-3.3-70b-versatile
+  OpenClawSecretArn:
+    Type: String
+    Default: ''
+  OpenAiSecretArn:
+    Type: String
+    Default: ''
+  GroqSecretArn:
+    Type: String
+    Default: ''
+
+Conditions:
+  HasOpenClawSecret: !Not [!Equals [!Ref OpenClawSecretArn, '']]
+  HasOpenAiSecret: !Not [!Equals [!Ref OpenAiSecretArn, '']]
+  HasGroqSecret: !Not [!Equals [!Ref GroqSecretArn, '']]
+
+Resources:
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ServiceName}-dlq'
+      MessageRetentionPeriod: 1209600
+
+  WorkQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ServiceName}-queue'
+      VisibilityTimeout: !Ref VisibilityTimeout
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ServiceName}'
+      RetentionInDays: 30
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ServiceName}-cluster'
+
+  Repository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref ServiceName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep the most recent 20 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 20
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: !Sub '${ServiceName}-execution-secrets'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:basehealth/*'
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ServiceName}-task-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub '${ServiceName}-runtime-access'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:ChangeMessageVisibility
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                Resource:
+                  - !GetAtt WorkQueue.Arn
+                  - !GetAtt DeadLetterQueue.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub '${ArtifactBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt ArtifactBucket.Arn
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Ref ServiceName
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: autoresearch-worker
+          Image: !Ref WorkerImageUri
+          Essential: true
+          Command:
+            - npm
+            - run
+            - autoresearch:worker:aws
+          Environment:
+            - Name: NODE_ENV
+              Value: production
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: CLAWDBOT_AWS_SQS_QUEUE_URL
+              Value: !Ref WorkQueue
+            - Name: CLAWDBOT_AWS_S3_BUCKET
+              Value: !Ref ArtifactBucket
+            - Name: CLAWDBOT_AWS_S3_PREFIX
+              Value: !Ref S3Prefix
+            - Name: CLAWDBOT_AWS_ECS_CLUSTER
+              Value: !Ref Cluster
+            - Name: CLAWDBOT_AWS_ECS_SERVICE
+              Value: !Ref ServiceName
+            - Name: CLAWDBOT_AWS_ECS_TASK_DEFINITION
+              Value: !Ref ServiceName
+            - Name: CLAWDBOT_AWS_CLOUDWATCH_LOG_GROUP
+              Value: !Ref LogGroup
+            - Name: CLAWDBOT_AWS_WORKER_POLL_SECONDS
+              Value: !Sub '${WorkerPollSeconds}'
+            - Name: CLAWDBOT_AWS_WORKER_VISIBILITY_TIMEOUT
+              Value: !Sub '${VisibilityTimeout}'
+            - Name: CLAWDBOT_ALLOW_AUTO_APPLY
+              Value: !Ref AllowAutoApply
+            - Name: CLAWDBOT_STATE_DIR
+              Value: /tmp/basehealth-clawdbot
+            - Name: CLAWDBOT_WORKSPACE_DIR
+              Value: /app
+            - Name: OPENCLAW_GATEWAY_URL
+              Value: !Ref OpenClawGatewayUrl
+            - Name: OPENCLAW_GATEWAY_AGENT_ID
+              Value: !Ref OpenClawGatewayAgentId
+            - Name: OPENCLAW_RESEARCH_MODEL
+              Value: !Ref OpenClawResearchModel
+            - Name: OPENAI_RESEARCH_MODEL
+              Value: !Ref OpenAiResearchModel
+            - Name: GROQ_RESEARCH_MODEL
+              Value: !Ref GroqResearchModel
+          Secrets:
+            - !If
+              - HasOpenClawSecret
+              - Name: OPENCLAW_API_KEY
+                ValueFrom: !Ref OpenClawSecretArn
+              - !Ref AWS::NoValue
+            - !If
+              - HasOpenAiSecret
+              - Name: OPENAI_API_KEY
+                ValueFrom: !Ref OpenAiSecretArn
+              - !Ref AWS::NoValue
+            - !If
+              - HasGroqSecret
+              - Name: GROQ_API_KEY
+                ValueFrom: !Ref GroqSecretArn
+              - !Ref AWS::NoValue
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - LogGroup
+    Properties:
+      ServiceName: !Ref ServiceName
+      Cluster: !Ref Cluster
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 0
+        MaximumPercent: 200
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: !Ref AssignPublicIp
+          SecurityGroups: !Ref SecurityGroupIds
+          Subnets: !Ref VpcSubnetIds
+
+Outputs:
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucket
+  WorkQueueUrl:
+    Value: !Ref WorkQueue
+  WorkQueueArn:
+    Value: !GetAtt WorkQueue.Arn
+  DeadLetterQueueUrl:
+    Value: !Ref DeadLetterQueue
+  ClusterName:
+    Value: !Ref Cluster
+  ServiceName:
+    Value: !Ref ServiceName
+  LogGroupName:
+    Value: !Ref LogGroup
+  EcrRepositoryUri:
+    Value: !GetAtt Repository.RepositoryUri
+  TaskExecutionRoleArn:
+    Value: !GetAtt TaskExecutionRole.Arn
+  TaskRoleArn:
+    Value: !GetAtt TaskRole.Arn
