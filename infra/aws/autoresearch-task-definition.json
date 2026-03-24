@@ -1,0 +1,40 @@
+{
+  "family": "basehealth-autoresearch-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::<account-id>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<account-id>:role/basehealth-autoresearch-worker-role",
+  "containerDefinitions": [
+    {
+      "name": "autoresearch-worker",
+      "image": "<account-id>.dkr.ecr.<region>.amazonaws.com/basehealth:<tag>",
+      "essential": true,
+      "command": ["npm", "run", "autoresearch:worker:aws"],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "AWS_REGION", "value": "us-west-2" },
+        { "name": "CLAWDBOT_AWS_SQS_QUEUE_URL", "value": "https://sqs.us-west-2.amazonaws.com/<account-id>/basehealth-autoresearch" },
+        { "name": "CLAWDBOT_AWS_S3_BUCKET", "value": "basehealth-autoresearch-artifacts" },
+        { "name": "CLAWDBOT_AWS_S3_PREFIX", "value": "autoresearch" },
+        { "name": "CLAWDBOT_AWS_CLOUDWATCH_LOG_GROUP", "value": "/ecs/basehealth-autoresearch-worker" },
+        { "name": "CLAWDBOT_STATE_DIR", "value": "/tmp/basehealth-clawdbot" },
+        { "name": "CLAWDBOT_WORKSPACE_DIR", "value": "/app" }
+      ],
+      "secrets": [
+        { "name": "OPENCLAW_API_KEY", "valueFrom": "arn:aws:secretsmanager:<region>:<account-id>:secret:basehealth/openclaw" },
+        { "name": "OPENAI_API_KEY", "valueFrom": "arn:aws:secretsmanager:<region>:<account-id>:secret:basehealth/openai" },
+        { "name": "GROQ_API_KEY", "valueFrom": "arn:aws:secretsmanager:<region>:<account-id>:secret:basehealth/groq" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/basehealth-autoresearch-worker",
+          "awslogs-region": "us-west-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

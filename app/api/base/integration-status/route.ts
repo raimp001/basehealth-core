@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getAutoResearchConfig } from "@/lib/autoresearch/config"
 import { ACTIVE_CHAIN, PAYMENT_CONFIG } from "@/lib/network-config"
 import { getPrimaryAdminEmail } from "@/lib/admin-access"
 
@@ -25,6 +26,7 @@ function sectionReady(section: Section): boolean {
 }
 
 export async function GET() {
+  const autoResearchConfig = getAutoResearchConfig()
   const chatPaywallEnabled = (process.env.BASEHEALTH_CHAT_PAYWALL || "false").toLowerCase() === "true"
 
   const openclawKey =
@@ -284,6 +286,47 @@ export async function GET() {
         },
       ],
     },
+    {
+      id: "autoresearch",
+      title: "Auto-Research Worker",
+      checks: [
+        {
+          id: "local-runtime",
+          label: "Local worker runtime available",
+          env: "CLAWDBOT_STATE_DIR / CLAWDBOT_WORKSPACE_DIR",
+          required: false,
+          passed: autoResearchConfig.localWorkerEnabled,
+          help: "The v1 research loop runs only on local/self-hosted Node runtimes, not Vercel serverless.",
+        },
+        {
+          id: "research-provider",
+          label: "Research AI provider configured",
+          env: "OPENCLAW_* / OPENAI_API_KEY / GROQ_API_KEY",
+          required: false,
+          passed:
+            autoResearchConfig.openclawConfigured ||
+            autoResearchConfig.openaiConfigured ||
+            autoResearchConfig.groqConfigured,
+          help: "At least one provider is needed to execute local research runs and generate reports.",
+        },
+        {
+          id: "research-aws",
+          label: "AWS worker path configured",
+          env: "AWS_REGION + CLAWDBOT_AWS_SQS_QUEUE_URL + CLAWDBOT_AWS_S3_BUCKET",
+          required: false,
+          passed: autoResearchConfig.aws.configured,
+          help: "Optional for queue-based execution through SQS, S3, and an ECS/Fargate worker.",
+        },
+        {
+          id: "research-auto-apply",
+          label: "Patch auto-apply explicitly enabled",
+          env: "CLAWDBOT_ALLOW_AUTO_APPLY",
+          required: false,
+          passed: autoResearchConfig.autoApplyEnabled,
+          help: "Optional. Patch artifacts are still reviewable without this, but applying them from the UI stays disabled.",
+        },
+      ],
+    },
   ]
 
   const missingRequired = sections.flatMap((section) =>
@@ -319,6 +362,16 @@ export async function GET() {
     },
     features: {
       chatPaywallEnabled,
+    },
+    autoresearch: {
+      runtime: autoResearchConfig.runtime,
+      localWorkerEnabled: autoResearchConfig.localWorkerEnabled,
+      autoApplyEnabled: autoResearchConfig.autoApplyEnabled,
+      aiProviderConfigured:
+        autoResearchConfig.openclawConfigured ||
+        autoResearchConfig.openaiConfigured ||
+        autoResearchConfig.groqConfigured,
+      aws: autoResearchConfig.aws,
     },
     network: {
       name: ACTIVE_CHAIN.name,
