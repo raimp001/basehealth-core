@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Database,
   Loader2,
-  Calendar
+  Calendar,
+  Bot
 } from "lucide-react"
 
 interface Stats {
@@ -218,6 +219,27 @@ export default function AdminPortalPage() {
                           <p className="font-medium">Onboarding Analytics</p>
                           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                             Funnel conversion, drop-off rates, trends
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                  </div>
+                </Link>
+              </div>
+
+              <div className="space-y-3 mt-8">
+                <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Automation</p>
+
+                <Link href="/admin/research">
+                  <div className="rounded-xl p-5 transition-all cursor-pointer group" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Bot className="w-5 h-5" style={{ color: 'hsl(var(--accent))' }} />
+                        <div>
+                          <p className="font-medium">Auto-Research Worker</p>
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                            Run local OpenClaw-guided research loops with saved history
                           </p>
                         </div>
                       </div>
