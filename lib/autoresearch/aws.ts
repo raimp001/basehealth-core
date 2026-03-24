@@ -1,5 +1,3 @@
-import "server-only"
-
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs"
 import { getAutoResearchAwsConfig } from "@/lib/autoresearch/config"

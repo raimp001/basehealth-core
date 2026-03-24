@@ -1,5 +1,3 @@
-import "server-only"
-
 import { groq } from "@ai-sdk/groq"
 import { createOpenAI, openai } from "@ai-sdk/openai"
 import { getAutoResearchConfig, getProviderOrder } from "@/lib/autoresearch/config"
