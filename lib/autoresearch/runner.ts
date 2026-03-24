@@ -134,8 +134,9 @@ async function runCommand(command: string, args: string[], cwd: string, timeout 
 }
 
 async function runShellCommand(command: string, cwd: string, timeout = 30000): Promise<{ output: string; exitCode: number | null }> {
+  const shellPath = process.env.SHELL?.trim() || "/bin/sh"
   try {
-    const result = await execFileAsync(process.env.SHELL || "/bin/zsh", ["-lc", command], {
+    const result = await execFileAsync(shellPath, ["-lc", command], {
       cwd,
       timeout,
       maxBuffer: 1024 * 1024,
@@ -525,12 +526,20 @@ export async function executePersistedAutoResearchRun(
   const run = await readAutoResearchRun(runId)
   if (!run) throw new Error(`Auto-research run ${runId} was not found`)
 
+  if (run.status === "completed" || run.status === "failed") {
+    return run
+  }
+
   const config = getAutoResearchConfig()
   const currentRun: AutoResearchRun = {
     ...run,
     status: "running",
     startedAt: new Date().toISOString(),
     error: undefined,
+    iterations: run.status === "queued" ? run.iterations : [],
+    patchArtifact: undefined,
+    reportPath: undefined,
+    reportMarkdown: undefined,
     dispatch: run.dispatch
       ? {
           ...run.dispatch,
@@ -636,11 +645,16 @@ export async function executePersistedAutoResearchRun(
     currentRun.reportPath = await writeAutoResearchReport(currentRun.id, currentRun.reportMarkdown)
 
     if (options?.syncToS3 || currentRun.dispatch?.target === "aws-sqs") {
-      const artifactKeys = await syncAutoResearchRunArtifactsToS3(currentRun, patchContent)
       currentRun.dispatch = currentRun.dispatch
         ? {
             ...currentRun.dispatch,
             status: "completed",
+          }
+        : currentRun.dispatch
+      const artifactKeys = await syncAutoResearchRunArtifactsToS3(currentRun, patchContent)
+      currentRun.dispatch = currentRun.dispatch
+        ? {
+            ...currentRun.dispatch,
             runKey: artifactKeys.runKey || currentRun.dispatch.runKey,
             reportKey: artifactKeys.reportKey || currentRun.dispatch.reportKey,
             patchKey: artifactKeys.patchKey || currentRun.dispatch.patchKey,
@@ -663,11 +677,16 @@ export async function executePersistedAutoResearchRun(
     currentRun.reportPath = await writeAutoResearchReport(currentRun.id, currentRun.reportMarkdown)
 
     if (options?.syncToS3 || currentRun.dispatch?.target === "aws-sqs") {
-      const artifactKeys = await syncAutoResearchRunArtifactsToS3(currentRun)
       currentRun.dispatch = currentRun.dispatch
         ? {
             ...currentRun.dispatch,
             status: "failed",
+          }
+        : currentRun.dispatch
+      const artifactKeys = await syncAutoResearchRunArtifactsToS3(currentRun)
+      currentRun.dispatch = currentRun.dispatch
+        ? {
+            ...currentRun.dispatch,
             runKey: artifactKeys.runKey || currentRun.dispatch.runKey,
             reportKey: artifactKeys.reportKey || currentRun.dispatch.reportKey,
             lastSyncedAt: new Date().toISOString(),

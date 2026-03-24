@@ -27,9 +27,9 @@ async function processMessage(client: SQSClient, queueUrl: string, message: Mess
   }
 
   const settings = normalizeAutoResearchSettings(request.settings as any)
-  let run = await readAutoResearchRun(request.runId)
-  if (!run) {
-    run = await createAutoResearchRunRecord({
+  const existingRun = await readAutoResearchRun(request.runId)
+  if (!existingRun) {
+    await createAutoResearchRunRecord({
       id: request.runId,
       goal: request.goal,
       settings,
@@ -41,15 +41,18 @@ async function processMessage(client: SQSClient, queueUrl: string, message: Mess
       },
     })
   } else {
-    run.dispatch = {
-      ...(run.dispatch || {
+    const run = {
+      ...existingRun,
+      dispatch: {
+        ...(existingRun.dispatch || {
+          target: "aws-sqs",
+          status: "processing",
+          queuedAt: request.queuedAt || new Date().toISOString(),
+        }),
         target: "aws-sqs",
         status: "processing",
-        queuedAt: request.queuedAt || new Date().toISOString(),
-      }),
-      target: "aws-sqs",
-      status: "processing",
-      requestKey: body.requestKey,
+        requestKey: body.requestKey,
+      },
     }
     await saveAutoResearchRun(run)
   }

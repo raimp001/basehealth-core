@@ -14,6 +14,9 @@ const RUNS_DIR = "runs"
 const REPORTS_DIR = "reports"
 const PATCHES_DIR = "patches"
 
+const PRIVATE_DIR_MODE = 0o700
+const PRIVATE_FILE_MODE = 0o600
+
 function getStatePaths() {
   const stateDir = getAutoResearchStateDir()
   return {
@@ -33,6 +36,10 @@ async function exists(filePath: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+async function writeStateFile(filePath: string, contents: string): Promise<void> {
+  await writeFile(filePath, contents, { encoding: "utf8", mode: PRIVATE_FILE_MODE, flag: "w" })
 }
 
 function summarizeRun(run: AutoResearchRun): AutoResearchRunSummary {
@@ -55,17 +62,17 @@ function summarizeRun(run: AutoResearchRun): AutoResearchRunSummary {
 export async function ensureAutoResearchState(): Promise<void> {
   const { stateDir, runsDir, reportsDir, patchesDir, programPath, settingsPath } = getStatePaths()
 
-  await mkdir(stateDir, { recursive: true })
-  await mkdir(runsDir, { recursive: true })
-  await mkdir(reportsDir, { recursive: true })
-  await mkdir(patchesDir, { recursive: true })
+  await mkdir(stateDir, { recursive: true, mode: PRIVATE_DIR_MODE })
+  await mkdir(runsDir, { recursive: true, mode: PRIVATE_DIR_MODE })
+  await mkdir(reportsDir, { recursive: true, mode: PRIVATE_DIR_MODE })
+  await mkdir(patchesDir, { recursive: true, mode: PRIVATE_DIR_MODE })
 
   if (!(await exists(programPath))) {
-    await writeFile(programPath, `${DEFAULT_AUTO_RESEARCH_PROGRAM.trim()}\n`, "utf8")
+    await writeStateFile(programPath, `${DEFAULT_AUTO_RESEARCH_PROGRAM.trim()}\n`)
   }
 
   if (!(await exists(settingsPath))) {
-    await writeFile(settingsPath, `${JSON.stringify(DEFAULT_AUTO_RESEARCH_SETTINGS, null, 2)}\n`, "utf8")
+    await writeStateFile(settingsPath, `${JSON.stringify(DEFAULT_AUTO_RESEARCH_SETTINGS, null, 2)}\n`)
   }
 }
 
@@ -80,7 +87,7 @@ export async function writeAutoResearchProgram(program: string): Promise<string>
   const { programPath } = getStatePaths()
   const nextValue = (program || "").trim() || DEFAULT_AUTO_RESEARCH_PROGRAM
   const finalProgram = `${nextValue.trim()}\n`
-  await writeFile(programPath, finalProgram, "utf8")
+  await writeStateFile(programPath, finalProgram)
   return finalProgram
 }
 
@@ -104,14 +111,14 @@ export async function writeAutoResearchSettings(
   const { settingsPath } = getStatePaths()
   const current = await readAutoResearchSettings()
   const next = normalizeAutoResearchSettings({ ...current, ...settings })
-  await writeFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`, "utf8")
+  await writeStateFile(settingsPath, `${JSON.stringify(next, null, 2)}\n`)
   return next
 }
 
 export async function saveAutoResearchRun(run: AutoResearchRun): Promise<void> {
   await ensureAutoResearchState()
   const { runsDir } = getStatePaths()
-  await writeFile(path.join(runsDir, `${run.id}.json`), `${JSON.stringify(run, null, 2)}\n`, "utf8")
+  await writeStateFile(path.join(runsDir, `${run.id}.json`), `${JSON.stringify(run, null, 2)}\n`)
 }
 
 export async function readAutoResearchRun(id: string): Promise<AutoResearchRun | null> {
@@ -148,7 +155,7 @@ export async function writeAutoResearchReport(runId: string, markdown: string): 
   await ensureAutoResearchState()
   const { reportsDir } = getStatePaths()
   const reportPath = path.join(reportsDir, `${runId}.md`)
-  await writeFile(reportPath, markdown, "utf8")
+  await writeStateFile(reportPath, markdown)
   return reportPath
 }
 
@@ -156,7 +163,7 @@ export async function writeAutoResearchPatch(runId: string, patchContent: string
   await ensureAutoResearchState()
   const { patchesDir } = getStatePaths()
   const patchPath = path.join(patchesDir, `${runId}.patch`)
-  await writeFile(patchPath, patchContent, "utf8")
+  await writeStateFile(patchPath, patchContent)
   return patchPath
 }
 
