@@ -100,6 +100,15 @@ export interface EnrichedRecommendation {
   sourceOrg: string
   sourceUrl: string
   gradeRationale: string
+  sources?: Array<{
+    title?: string
+    organization?: string
+    url?: string
+    publishedDate?: string
+    lastReviewed?: string
+    version?: string
+    gradeRationale?: string
+  }>
 }
 
 // ============================================================================
@@ -420,6 +429,7 @@ export function enrichRecommendations(
       sourceOrg: source?.organization || "USPSTF",
       sourceUrl: source?.url || "",
       gradeRationale: source?.gradeRationale || "",
+      sources: rec.sources || [],
     }
   })
 }

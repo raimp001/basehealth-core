@@ -5,6 +5,7 @@ import {
   getGuidelineEngineInfo,
   type PatientProfile,
 } from "@/lib/guideline-engine"
+import { generateClinicianRecommendationReview } from "@/lib/clinical/openai-clinician-review"
 
 // USPSTF Grade A and B Recommendations with Provider Suggestions
 
@@ -771,6 +772,40 @@ export async function POST(request: Request) {
 
     const enriched = enrichRecommendations(recommendations, profile)
     const matchedPathways = matchPathways(profile)
+    const highRiskPathways = matchedPathways.map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      referrals: p.referrals,
+      source: p.source,
+    }))
+
+    const clinicianReview = await generateClinicianRecommendationReview({
+      profile,
+      recommendations: enriched.map((rec) => ({
+        id: rec.id,
+        name: rec.name,
+        description: rec.description,
+        frequency: rec.frequency,
+        grade: rec.grade,
+        primaryProvider: rec.primaryProvider,
+        adjustedFrequency: rec.adjustedFrequency,
+        pathwayApplied: rec.pathwayApplied,
+        pathwayNote: rec.pathwayNote,
+        sources: (rec.sources || []).map((source) => ({
+          title: source.title || source.organization || "Guideline source",
+          organization: source.organization || rec.sourceOrg || "Guideline source",
+          url: source.url || rec.sourceUrl || "",
+          publishedDate: source.publishedDate,
+          lastReviewed: source.lastReviewed,
+          version: source.version,
+          gradeRationale: source.gradeRationale || rec.gradeRationale,
+        })),
+      })),
+      clinicalReviewFlags: parsedContext.clinicalReviewFlags,
+      personalizationNotes: parsedContext.personalizationNotes,
+      highRiskPathways,
+    })
 
     // Summarize provider types needed
     const specialistNeeded = recommendations.filter(r => r.canBeDoneBy === 'specialist')
@@ -794,14 +829,9 @@ export async function POST(request: Request) {
         factors: unique(riskFactors),
         level: matchedPathways.length > 0 ? 'elevated' : riskFactors.length > 3 ? 'elevated' : riskFactors.length > 0 ? 'moderate' : 'low'
       },
-      highRiskPathways: matchedPathways.map(p => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        referrals: p.referrals,
-        source: p.source,
-      })),
+      highRiskPathways,
       clinicalReviewFlags: parsedContext.clinicalReviewFlags,
+      clinicianReview,
       personalizationNotes: parsedContext.personalizationNotes,
       contextSummary: {
         hasAdditionalContext: Boolean(String(additionalContext || "").trim()),
