@@ -11,7 +11,7 @@ import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { 
   ArrowRight, ArrowLeft, Loader2, CheckCircle, 
-  AlertCircle, Shield, Heart, Brain, User, CreditCard, X, Lock, Calendar
+  AlertCircle, Shield, Heart, Brain, User, CreditCard, X, Lock, Calendar, Stethoscope
 } from "lucide-react"
 import { BasePayCheckout } from "@/components/checkout/base-pay-checkout"
 
@@ -70,6 +70,36 @@ interface ClinicalReviewFlag {
   title: string
   why: string
   nextStep: string
+}
+
+interface ClinicianReviewData {
+  enabled: boolean
+  status: 'generated' | 'not_configured' | 'error'
+  provider: 'openai'
+  model: string | null
+  generatedAt: string
+  reviewRequired: boolean
+  error?: string
+  review?: {
+    summary: string
+    recommendationConfidence: 'rules-confirmed' | 'needs-clinician-review' | 'insufficient-context'
+    reviewRequired: boolean
+    clinicalReasoning: Array<{
+      finding: string
+      recommendationIds: string[]
+      rationale: string
+      evidenceBasis: 'provided-guideline' | 'patient-context' | 'clinical-judgment-needed'
+    }>
+    clinicianActions: Array<{
+      title: string
+      rationale: string
+      urgency: 'routine' | 'soon' | 'urgent'
+      owner: 'patient' | 'primary-care' | 'specialist' | 'care-team'
+    }>
+    missingInformation: string[]
+    patientFriendlyNote: string
+    safetyEscalation: string | null
+  }
 }
 
 interface Summary {
@@ -230,6 +260,7 @@ export default function ScreeningPage() {
   const [riskProfile, setRiskProfile] = useState<RiskProfile | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
   const [clinicalReviewFlags, setClinicalReviewFlags] = useState<ClinicalReviewFlag[]>([])
+  const [clinicianReview, setClinicianReview] = useState<ClinicianReviewData | null>(null)
   const [personalizationNotes, setPersonalizationNotes] = useState<string[]>([])
   const [highRiskPathways, setHighRiskPathways] = useState<HighRiskPathway[]>([])
   const [timelineEntries, setTimelineEntries] = useState<TimelineEntry[]>([])
@@ -307,6 +338,7 @@ export default function ScreeningPage() {
     setIsLoading(true)
     setError(null)
     setTimelineStatusMessage(null)
+    setClinicianReview(null)
 
     try {
       const response = await fetch('/api/screening/recommendations', {
@@ -332,6 +364,7 @@ export default function ScreeningPage() {
         setRiskProfile(nextRiskProfile)
         setSummary(nextSummary)
         setClinicalReviewFlags(Array.isArray(data.clinicalReviewFlags) ? data.clinicalReviewFlags : [])
+        setClinicianReview(data.clinicianReview || null)
         setPersonalizationNotes(Array.isArray(data.personalizationNotes) ? data.personalizationNotes : [])
         setHighRiskPathways(Array.isArray(data.highRiskPathways) ? data.highRiskPathways : [])
 
@@ -447,6 +480,71 @@ export default function ScreeningPage() {
               {riskProfile.factors.length > 0 && (
                 <p className="mt-3 text-sm text-muted-foreground">
                   Identified factors: {riskProfile.factors.slice(0, 5).join(", ")}
+                </p>
+              )}
+            </section>
+          )}
+
+          {clinicianReview && (
+            <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold text-foreground">Clinician support layer</h2>
+                </div>
+                <span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {clinicianReview.enabled ? `OpenAI ${clinicianReview.model}` : 'Rules only'}
+                </span>
+              </div>
+
+              {clinicianReview.status === 'generated' && clinicianReview.review ? (
+                <div className="mt-3 space-y-4">
+                  <p className="text-sm text-foreground leading-relaxed">{clinicianReview.review.summary}</p>
+
+                  {clinicianReview.review.safetyEscalation && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+                      <p className="text-xs font-semibold text-destructive">Safety escalation</p>
+                      <p className="mt-1 text-sm text-foreground">{clinicianReview.review.safetyEscalation}</p>
+                    </div>
+                  )}
+
+                  {clinicianReview.review.clinicianActions.length > 0 && (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {clinicianReview.review.clinicianActions.slice(0, 4).map((action, idx) => (
+                        <div key={`${action.title}-${idx}`} className="rounded-lg border border-border bg-muted/20 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-foreground">{action.title}</p>
+                            <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              {action.urgency}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{action.rationale}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {clinicianReview.review.missingInformation.length > 0 && (
+                    <div className="rounded-lg border border-border bg-background p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Ask or confirm
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        {clinicianReview.review.missingInformation.slice(0, 5).map((item, idx) => (
+                          <p key={`${item}-${idx}`} className="text-xs text-foreground">
+                            • {item}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">{clinicianReview.review.patientFriendlyNote}</p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Clinician-grade OpenAI review was not generated for this run. The guideline rules and high-risk flags
+                  are still shown; confirm individualized recommendations with a licensed clinician.
                 </p>
               )}
             </section>
