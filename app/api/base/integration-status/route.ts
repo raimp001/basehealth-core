@@ -10,6 +10,10 @@ import {
   getOpenClawGatewayAgentId,
   getOpenClawGatewayUrl,
 } from "@/lib/openclaw-gateway"
+import {
+  getClinicianOpenAiModel,
+  isClinicianOpenAiConfigured,
+} from "@/lib/clinical/openai-clinician-review"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -160,6 +164,29 @@ export async function GET() {
           required: false,
           passed: Boolean(process.env.OPENAI_API_KEY),
           help: "Fallback provider if OpenClaw is not configured.",
+        },
+      ],
+    },
+    {
+      id: "clinical-openai",
+      title: "Clinician Recommendation Support",
+      checks: [
+        {
+          id: "openai-clinician-key",
+          label: "OpenAI clinician review configured",
+          env: "OPENAI_API_KEY",
+          required: false,
+          passed: isClinicianOpenAiConfigured(),
+          help:
+            "Enables structured clinician support review for screening recommendations. Keep this clinician-facing and require human review for high-risk cases.",
+        },
+        {
+          id: "openai-clinician-model",
+          label: "OpenAI clinician model selected",
+          env: "OPENAI_CLINICIAN_MODEL / OPENAI_MODEL",
+          required: false,
+          passed: Boolean(getClinicianOpenAiModel()),
+          help: `Current model: ${getClinicianOpenAiModel()}. Set OPENAI_CLINICIAN_MODEL to override the screening review model.`,
         },
       ],
     },
@@ -357,6 +384,11 @@ export async function GET() {
     },
     overallReady: missingRequired.length === 0,
     aiProvider,
+    clinicianReview: {
+      configured: isClinicianOpenAiConfigured(),
+      provider: "openai",
+      model: getClinicianOpenAiModel(),
+    },
     openclaw: {
       gatewayUrlConfigured: Boolean(openclawGatewayUrl),
       gatewayUrlHost: openclawGatewayUrl ? new URL(openclawGatewayUrl).host : null,

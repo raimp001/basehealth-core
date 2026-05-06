@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Copy, ExternalLink, Loader2, ShieldAlert, Wallet } from "lucide-react"
+import { ArrowDownLeft, ArrowUpRight, Copy, ExternalLink, Loader2, ShieldAlert, Wallet } from "lucide-react"
 import { toast } from "sonner"
 import { TreasuryTransfer } from "@/components/treasury/treasury-transfer"
 
@@ -23,6 +23,37 @@ type TreasuryBalancesResponse = {
   }
 }
 
+type TreasuryActivityResponse = {
+  success: boolean
+  generatedAt?: string
+  error?: string
+  network?: { name: string; chainId: number; explorer: string; activityExplorer: string }
+  treasuryAddress?: string
+  summary?: {
+    eventCount: number
+    incomingNativeTransfers: number
+    incomingTokenTransfers: number
+    possibleTipsOrPayments: number
+    hasUsdcTransfers: boolean
+    latestIncomingAt: string | null
+  }
+  events?: Array<{
+    id: string
+    kind: "native-transfer" | "token-transfer"
+    direction: "incoming" | "outgoing" | "self" | "unknown"
+    asset: string
+    amount: string
+    amountUsd: string | null
+    from: string | null
+    to: string | null
+    txHash: string
+    timestamp: string | null
+    status: string | null
+    method: string | null
+    explorerUrl: string
+  }>
+}
+
 function formatAddress(address?: string | null) {
   if (!address) return ""
   return `${address.slice(0, 6)}...${address.slice(-4)}`
@@ -30,7 +61,9 @@ function formatAddress(address?: string | null) {
 
 export default function TreasuryPage() {
   const [data, setData] = useState<TreasuryBalancesResponse | null>(null)
+  const [activity, setActivity] = useState<TreasuryActivityResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activityLoading, setActivityLoading] = useState(true)
 
   const explorerAddressUrl = useMemo(() => {
     if (!data?.network?.explorer || !data?.treasuryAddress) return null
@@ -40,14 +73,32 @@ export default function TreasuryPage() {
   useEffect(() => {
     const load = async () => {
       setLoading(true)
+      setActivityLoading(true)
       try {
-        const res = await fetch("/api/treasury/balances", { cache: "no-store" })
-        const json = (await res.json()) as TreasuryBalancesResponse
-        setData(json)
+        const [balancesResult, activityResult] = await Promise.allSettled([
+          fetch("/api/treasury/balances", { cache: "no-store" }),
+          fetch("/api/treasury/activity?limit=8", { cache: "no-store" }),
+        ])
+
+        if (balancesResult.status === "fulfilled") {
+          const json = (await balancesResult.value.json()) as TreasuryBalancesResponse
+          setData(json)
+        } else {
+          setData({ success: false, error: "Failed to load treasury balances" })
+        }
+
+        if (activityResult.status === "fulfilled") {
+          const json = (await activityResult.value.json()) as TreasuryActivityResponse
+          setActivity(json)
+        } else {
+          setActivity({ success: false, error: "Failed to load treasury activity" })
+        }
       } catch (error) {
         setData({ success: false, error: "Failed to load treasury balances" })
+        setActivity({ success: false, error: "Failed to load treasury activity" })
       } finally {
         setLoading(false)
+        setActivityLoading(false)
       }
     }
 
@@ -167,6 +218,97 @@ export default function TreasuryPage() {
         <div className="mt-6">
           <TreasuryTransfer />
         </div>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Recent Base Activity</CardTitle>
+            <CardDescription>Explorer-backed view of possible tips and payments to the treasury wallet</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {activityLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading activity...
+              </div>
+            ) : activity?.success ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Possible tips/payments</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {activity.summary?.possibleTipsOrPayments ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Incoming ETH</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {activity.summary?.incomingNativeTransfers ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">Incoming USDC</p>
+                    <p className="mt-1 text-xl font-semibold text-foreground">
+                      {activity.summary?.hasUsdcTransfers ? "Detected" : "None"}
+                    </p>
+                  </div>
+                </div>
+
+                {activity.events?.length ? (
+                  <div className="space-y-2">
+                    {activity.events.map((event) => (
+                      <div key={event.id} className="flex flex-col gap-3 rounded-lg border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full border bg-muted/30">
+                            {event.direction === "incoming" || event.direction === "self" ? (
+                              <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {event.direction === "incoming" || event.direction === "self" ? "Incoming" : "Outgoing"}{" "}
+                              {event.asset}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {event.timestamp ? new Date(event.timestamp).toLocaleString() : "Timestamp unavailable"} •{" "}
+                              {formatAddress(event.from)} → {formatAddress(event.to)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 sm:justify-end">
+                          <div className="text-left sm:text-right">
+                            <p className="text-sm font-semibold text-foreground">
+                              {Number(event.amount).toLocaleString(undefined, { maximumFractionDigits: 8 })} {event.asset}
+                            </p>
+                            {event.amountUsd && (
+                              <p className="text-xs text-muted-foreground">~${event.amountUsd}</p>
+                            )}
+                          </div>
+                          <Button asChild variant="outline" size="icon">
+                            <a href={event.explorerUrl} target="_blank" rel="noreferrer" aria-label="Open transaction">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No treasury transfers were found by the explorer yet.
+                  </p>
+                )}
+              </>
+            ) : (
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>Activity unavailable</AlertTitle>
+                <AlertDescription>{activity?.error || "Failed to load treasury activity"}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="mt-6">
           <CardHeader>
