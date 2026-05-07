@@ -128,6 +128,36 @@ export function BasePayCheckout({
 
       setResult(paymentResult)
       setStep("success")
+
+      // Persist a non-PHI receipt to localStorage so the /wallet audit page can render it.
+      try {
+        if (typeof window !== "undefined") {
+          const receipt = {
+            paymentId: paymentResult.paymentId,
+            txHash: paymentResult.txHash,
+            sender: paymentResult.sender,
+            amountUsd: amount,
+            serviceName,
+            serviceType: serviceType || serviceName,
+            orderId,
+            providerId,
+            createdAt: Date.now(),
+            network: basePayConfig.testnet ? "base-sepolia" : "base",
+          }
+          const raw = window.localStorage.getItem("basehealth:base-receipts")
+          const list = raw ? (JSON.parse(raw) as unknown[]) : []
+          if (Array.isArray(list)) {
+            list.unshift(receipt)
+            window.localStorage.setItem(
+              "basehealth:base-receipts",
+              JSON.stringify(list.slice(0, 50)),
+            )
+          }
+        }
+      } catch {
+        /* receipts are best-effort, never block the success state */
+      }
+
       onSuccess?.(paymentResult)
       
     } catch (err) {

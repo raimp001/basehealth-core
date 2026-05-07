@@ -14,6 +14,13 @@ import {
   AlertCircle, Shield, Heart, Brain, User, CreditCard, X, Lock, Calendar, Stethoscope
 } from "lucide-react"
 import { BasePayCheckout } from "@/components/checkout/base-pay-checkout"
+import { CareHandoffBanner } from "@/components/care-handoff-banner"
+import {
+  PROVIDER_HANDOFF_STORAGE_KEY,
+  SCHEDULING_HANDOFF_STORAGE_KEY,
+  fallbackHrefForCareHandoff,
+  safeSessionSetItem,
+} from "@/lib/care-handoff"
 
 const ASSESSMENT_FEE_USD = 0.25
 
@@ -470,6 +477,8 @@ export default function ScreeningPage() {
             )}
           </header>
 
+          <CareHandoffBanner surface="screening" className="mb-6" />
+
           {riskProfile && (
             <section className="mb-6 rounded-xl border border-border bg-card p-5 shadow-sm">
               <div className="flex items-center gap-2">
@@ -773,20 +782,50 @@ export default function ScreeningPage() {
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <Link
-                        href={`/providers/search?query=${encodeURIComponent(rec.primaryProvider)}`}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const payload = {
+                            source: "screening" as const,
+                            query: rec.primaryProvider,
+                            specialty: rec.primaryProvider,
+                            autorun: false,
+                            createdAt: Date.now(),
+                          }
+                          safeSessionSetItem(
+                            PROVIDER_HANDOFF_STORAGE_KEY,
+                            JSON.stringify(payload),
+                          )
+                          window.location.href = `/providers/search?q=${encodeURIComponent(rec.primaryProvider)}&specialty=${encodeURIComponent(rec.primaryProvider)}&from=screening`
+                        }}
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                       >
                         Find provider
                         <ArrowRight className="h-4 w-4" />
-                      </Link>
-                      <Link
-                        href={`/appointment/book?screening=${encodeURIComponent(rec.name)}`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const payload = {
+                            source: "screening" as const,
+                            providerName: rec.primaryProvider,
+                            providerKind: "screening",
+                            specialty: rec.primaryProvider,
+                            reason: rec.name,
+                            query: rec.name,
+                            createdAt: Date.now(),
+                          }
+                          safeSessionSetItem(
+                            SCHEDULING_HANDOFF_STORAGE_KEY,
+                            JSON.stringify(payload),
+                          )
+                          window.location.href = `/appointment/book?screening=${encodeURIComponent(rec.name)}&specialty=${encodeURIComponent(rec.primaryProvider)}&from=screening`
+                        }}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
                       >
                         <CreditCard className="h-4 w-4" />
                         Book appointment
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -8,6 +8,7 @@ import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Search, MapPin, Star, X, ArrowRight, Loader2, Navigation, AlertCircle, BadgeCheck, Phone, ExternalLink } from "lucide-react"
+import { CareHandoffBanner } from "@/components/care-handoff-banner"
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,8 @@ const QUICK_SPECIALTIES = [
 
 function SearchPageContent() {
   const searchParams = useSearchParams()
-  const initialQuery = searchParams?.get('query') || ''
+  // Accept both ?query= (legacy) and ?q= (chat handoff)
+  const initialQuery = searchParams?.get('query') || searchParams?.get('q') || ''
   const initialLocation = searchParams?.get('location') || ''
   
   const [specialty, setSpecialty] = useState(initialQuery)
@@ -189,6 +191,7 @@ function SearchPageContent() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       <main className="py-8">
         <div className="max-w-5xl mx-auto px-6">
+          <CareHandoffBanner surface="providers" className="mb-6" />
           {/* Header */}
           <div className={`max-w-3xl mb-10 ${mounted ? 'animate-fade-in-up' : 'opacity-0'}`}>
             <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-muted)' }}>
