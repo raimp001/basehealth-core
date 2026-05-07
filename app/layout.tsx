@@ -5,6 +5,7 @@ import { Providers } from "./providers"
 import { SkipToContent, Announcer } from "@/components/ui/accessibility"
 import { OfflineIndicator, UpdateBanner, InstallPrompt } from "@/hooks/use-pwa"
 import { MinimalNavigation } from "@/components/layout/minimal-navigation"
+import { EmergencyTriageBanner } from "@/components/safety/emergency-triage-banner"
 import { AgentAssistFloating } from "@/components/agents/agent-assist-floating"
 
 const APP_URL =
@@ -103,6 +104,7 @@ export default function RootLayout({
         <Providers>
           <OfflineIndicator />
           <UpdateBanner />
+          <EmergencyTriageBanner />
           <MinimalNavigation />
           <AgentAssistFloating />
           <main id="main-content" className="pt-20 md:pt-24 pb-24 md:pb-8">
