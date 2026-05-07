@@ -19,15 +19,15 @@ export type WalletSignatureVerificationResult = {
   error?: string
 }
 
-let cachedClient: ReturnType<typeof createPublicClient> | null = null
+let cachedClient: any = null
 
-function getPublicClient() {
+function getPublicClient(): any {
   if (cachedClient) return cachedClient
 
   const chain = ACTIVE_CHAIN.id === base.id ? base : baseSepolia
   cachedClient = createPublicClient({
     chain,
-    transport: http(ACTIVE_CHAIN.rpcUrls.default),
+    transport: http((ACTIVE_CHAIN as any).rpcUrls?.default ?? undefined),
   })
 
   return cachedClient

@@ -67,7 +67,7 @@ class WalletService {
             params: [
               {
                 chainId: network.chainId,
-                chainName: network.name,
+                chainName: network.chainName,
                 rpcUrls: [network.rpcUrl],
                 blockExplorerUrls: [network.blockExplorer],
                 nativeCurrency: {
@@ -121,13 +121,4 @@ class WalletService {
 export const walletService = new WalletService()
 
 // Add TypeScript definitions for window.ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      isMetaMask?: boolean
-      request: (request: { method: string; params?: any[] }) => Promise<any>
-      on: (event: string, callback: (...args: any[]) => void) => void
-      removeListener: (event: string, callback: (...args: any[]) => void) => void
-    }
-  }
-}
+// window.ethereum is declared in types/modules.d.ts

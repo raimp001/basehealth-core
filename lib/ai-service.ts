@@ -259,7 +259,7 @@ export async function searchProviders(zipCode: string, specialtyOrType?: string)
         // Build proper name from NPI data
         const firstName = p.basic?.first_name || ''
         const lastName = p.basic?.last_name || ''
-        const orgName = p.basic?.organization_name || ''
+        const orgName = (p.basic as any)?.organization_name || ''
         const credential = p.basic?.credential || 'MD'
         
         let providerName = ''

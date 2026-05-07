@@ -213,7 +213,7 @@ export async function attestProviderCredential(
     return {
       success: true,
       uid,
-      txHash: tx.tx.hash,
+      txHash: tx.receipt?.hash || "",
       explorerUrl: `${EXPLORER_BASE}/attestation/view/${uid}`,
     }
     
@@ -276,7 +276,7 @@ export async function attestVisitCompletion(
     return {
       success: true,
       uid,
-      txHash: tx.tx.hash,
+      txHash: tx.receipt?.hash || "",
       explorerUrl: `${EXPLORER_BASE}/attestation/view/${uid}`,
     }
     
@@ -338,7 +338,7 @@ export async function attestReview(
     return {
       success: true,
       uid,
-      txHash: tx.tx.hash,
+      txHash: tx.receipt?.hash || "",
       explorerUrl: `${EXPLORER_BASE}/attestation/view/${uid}`,
     }
     
@@ -398,7 +398,7 @@ export async function attestScreeningCompletion(
     return {
       success: true,
       uid,
-      txHash: tx.tx.hash,
+      txHash: tx.receipt?.hash || "",
       explorerUrl: `${EXPLORER_BASE}/attestation/view/${uid}`,
     }
     
@@ -446,7 +446,7 @@ export async function revokeAttestation(
     return {
       success: true,
       uid: attestationUid,
-      txHash: tx.tx.hash,
+      txHash: tx.receipt?.hash || "",
     }
     
   } catch (error) {

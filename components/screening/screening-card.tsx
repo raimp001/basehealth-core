@@ -37,8 +37,8 @@ export function ScreeningCard({ recommendation, isDue = false }: ScreeningCardPr
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Recommended Age:</span>
             <span>
-              {recommendation.recommendedAge.min}
-              {recommendation.recommendedAge.max ? ` - ${recommendation.recommendedAge.max}` : "+"} years
+              {recommendation.recommendedAge?.min ?? "-"}
+              {recommendation.recommendedAge?.max ? ` - ${recommendation.recommendedAge.max}` : "+"} years
             </span>
           </div>
           <div className="flex justify-between text-sm">
@@ -47,7 +47,7 @@ export function ScreeningCard({ recommendation, isDue = false }: ScreeningCardPr
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Specialist Types:</span>
-            <span>{recommendation.specialistTypes.join(", ")}</span>
+            <span>{recommendation.specialistTypes?.join(", ") ?? "Primary Care"}</span>
           </div>
 
           {isDue && (
@@ -65,7 +65,7 @@ export function ScreeningCard({ recommendation, isDue = false }: ScreeningCardPr
           className="w-full"
         >
           <Link
-            href={`/providers/search?specialty=${encodeURIComponent(recommendation.specialistTypes[0])}`}
+            href={`/providers/search?specialty=${encodeURIComponent(recommendation.specialistTypes?.[0] ?? "Primary Care")}`}
           >
             Find Provider
           </Link>

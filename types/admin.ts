@@ -128,6 +128,9 @@ export interface ProviderApplication extends ApplicationBase {
       phone: string
       email: string
     }>
+    resume?: string
+    licenses?: string[]
+    certifications?: string[]
   }
   verificationStatus: {
     npiVerified: boolean

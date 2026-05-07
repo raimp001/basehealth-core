@@ -8,32 +8,6 @@ import { Button } from "@/components/ui/button"
 import { MapPin, Locate, Phone, Star } from "lucide-react"
 import type { Provider } from "@/types/user"
 
-// Add type declarations for Google Maps
-declare global {
-  interface Window {
-    google: {
-      maps: {
-        LatLng: new (lat: number, lng: number) => { lat: () => number; lng: () => number };
-        places: {
-          PlacesService: new (div: HTMLDivElement) => {
-            nearbySearch: (
-              request: {
-                location: { lat: () => number; lng: () => number };
-                radius: number;
-                type: string[];
-              },
-              callback: (results: any[] | null, status: string) => void
-            ) => void;
-          };
-          PlacesServiceStatus: {
-            OK: string;
-          };
-        };
-      };
-    };
-  }
-}
-
 export default function EmergencyPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [mapApiKey, setMapApiKey] = useState<string>("")

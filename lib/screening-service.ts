@@ -34,14 +34,12 @@ export async function getScreeningRecommendations(
       name: g.screening,
       description: g.description,
       ageRange: { min: g.minAge, max: g.maxAge },
-      gender: g.gender,
+      gender: g.gender as "male" | "female" | "all",
       frequency: g.frequency,
       importance: g.grade === "A" ? "essential" : g.grade === "B" ? "recommended" : "routine",
-      specialtyNeeded: g.specialtyNeeded || "Primary Care",
-      riskFactors: g.riskFactors,
-      grade: g.grade,
       specialtyNeeded: "Primary Care",
-      riskFactors: [],
+      riskFactors: g.riskFactors ?? [],
+      grade: g.grade,
     }))
 }
 

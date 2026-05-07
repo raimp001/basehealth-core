@@ -147,7 +147,7 @@ function ProviderSearchComponent() {
         // If we have no providers, generate some for the ZIP code
         if (mockProviders.length === 0 && zipCode) {
           console.log("Generating mock providers for ZIP code:", zipCode)
-          mockProviders = db.generateProvidersForZipCode(zipCode, 10)
+          mockProviders = (db as any).generateProvidersForZipCode?.(zipCode, 10) ?? []
         }
 
         // Filter by specialty if provided (but be more lenient)
@@ -164,7 +164,7 @@ function ProviderSearchComponent() {
         // If still no providers, generate some generic ones
         if (mockProviders.length === 0) {
           console.log("Generating generic mock providers")
-          mockProviders = db.generateProvidersForZipCode(zipCode || "98101", 15)
+          mockProviders = (db as any).generateProvidersForZipCode?.(zipCode || "98101", 15) ?? []
         }
 
         if (mockProviders.length > 0) {

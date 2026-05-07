@@ -116,7 +116,7 @@ export async function verifyExactPayment(
     }
 
     const assetAddress = requirement.asset.toLowerCase()
-    const matches = receipt.logs.filter((log) => log.address.toLowerCase() === assetAddress)
+    const matches = receipt.logs.filter((log: any) => log.address.toLowerCase() === assetAddress)
 
     for (const log of matches) {
       try {

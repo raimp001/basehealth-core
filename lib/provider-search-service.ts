@@ -97,6 +97,11 @@ export async function searchProviders(options: {
   specialty?: string
   coordinates?: { latitude: number; longitude: number }
   radius?: number
+  location?: string
+  providerType?: string
+  useNPI?: boolean
+  useAI?: boolean
+  query?: string
 }): Promise<Provider[]> {
   const results: Provider[] = []
   void options.coordinates

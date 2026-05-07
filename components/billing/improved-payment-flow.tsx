@@ -88,7 +88,10 @@ export function ImprovedPaymentFlow({
     expiry: "",
     cvc: "",
     name: "",
-    zipCode: ""
+    zipCode: "",
+    street: "",
+    city: "",
+    state: ""
   })
 
   const [cryptoForm, setCryptoForm] = useState({
@@ -241,7 +244,7 @@ export function ImprovedPaymentFlow({
                 <Checkbox 
                   id="acknowledge-estimate" 
                   checked={showGoodFaithEstimate}
-                  onCheckedChange={setShowGoodFaithEstimate}
+                  onCheckedChange={(checked) => setShowGoodFaithEstimate(checked === true)}
                 />
                 <Label htmlFor="acknowledge-estimate" className="text-sm">
                   I acknowledge receipt of this Good Faith Estimate
@@ -528,7 +531,7 @@ export function ImprovedPaymentFlow({
           <Checkbox 
             id="save-method" 
             checked={savePaymentMethod}
-            onCheckedChange={setSavePaymentMethod}
+            onCheckedChange={(checked) => setSavePaymentMethod(checked === true)}
           />
           <Label htmlFor="save-method" className="text-sm">
             Save this payment method for future use (PCI DSS compliant storage)
@@ -539,7 +542,7 @@ export function ImprovedPaymentFlow({
           <Checkbox 
             id="terms" 
             checked={showGoodFaithEstimate}
-            onCheckedChange={setShowGoodFaithEstimate}
+            onCheckedChange={(checked) => setShowGoodFaithEstimate(checked === true)}
           />
           <Label htmlFor="terms" className="text-sm">
             I agree to the <a href="#" className="text-primary underline">Terms of Service</a>, 

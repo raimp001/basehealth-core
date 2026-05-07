@@ -57,7 +57,7 @@ export async function requirePrivyAuth(request: NextRequest): Promise<PrivyAuthR
     return {
       authenticated: true,
       userId: verifiedClaims.userId,
-      walletAddress: verifiedClaims.wallet?.address,
+      walletAddress: (verifiedClaims as any).wallet?.address,
     }
   } catch (error) {
     console.error('Privy auth error:', error)

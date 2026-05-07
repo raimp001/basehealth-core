@@ -24,8 +24,9 @@ export async function GET(
       where: { id: providerId },
       select: {
         id: true,
-        name: true,
-        specialty: true,
+        firstName: true,
+        lastName: true,
+        specialties: true,
         verified: true,
         bio: true,
       },
@@ -47,8 +48,8 @@ export async function GET(
         success: true,
         provider: {
           id: provider.id,
-          name: provider.name,
-          specialty: provider.specialty,
+          name: `${provider.firstName} ${provider.lastName}`.trim(),
+          specialty: provider.specialties?.[0] ?? null,
           verified: provider.verified,
         },
         attestation: {
@@ -65,8 +66,8 @@ export async function GET(
       success: true,
       provider: {
         id: provider.id,
-        name: provider.name,
-        specialty: provider.specialty,
+        name: `${provider.firstName} ${provider.lastName}`.trim(),
+        specialty: provider.specialties?.[0] ?? null,
         verified: provider.verified,
       },
       attestation: {

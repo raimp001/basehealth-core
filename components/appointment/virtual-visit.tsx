@@ -29,13 +29,12 @@ export function VirtualVisit({ provider, appointmentId, onEndCall }: VirtualVisi
   const webrtcRef = useRef<WebRTCService | null>(null)
 
   useEffect(() => {
-    // Initialize WebRTC
-    webrtcRef.current = new WebRTCService({
-      onRemoteStream: (stream) => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-        }
-      },
+    // Initialize WebRTC for this appointment room
+    webrtcRef.current = new WebRTCService(appointmentId)
+    webrtcRef.current.onRemoteStream((stream: MediaStream) => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
     })
 
     // Start local stream
@@ -44,9 +43,6 @@ export function VirtualVisit({ provider, appointmentId, onEndCall }: VirtualVisi
         videoRef.current.srcObject = stream
       }
     })
-
-    // Join room
-    webrtcRef.current.joinRoom(appointmentId)
 
     return () => {
       webrtcRef.current?.disconnect()

@@ -54,7 +54,7 @@ async function processMessage(client: SQSClient, queueUrl: string, message: Mess
         requestKey: body.requestKey,
       },
     }
-    await saveAutoResearchRun(run)
+    await saveAutoResearchRun(run as any)
   }
 
   console.log(`[autoresearch-aws-worker] processing run ${request.runId}`)

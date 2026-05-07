@@ -20,6 +20,7 @@ export function SimplifiedScreening() {
     age: "",
     gender: "",
     riskFactors: [] as string[],
+    zipCode: "",
   })
   const [recommendations, setRecommendations] = useState<any[]>([])
 
