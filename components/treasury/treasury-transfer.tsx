@@ -75,7 +75,7 @@ export function TreasuryTransfer() {
       const nextProvider = sdk.getProvider()
       if (!nextProvider) throw new Error("Wallet provider unavailable")
 
-      const accounts = await nextProvider.request({ method: "eth_requestAccounts" })
+      const accounts = (await nextProvider.request({ method: "eth_requestAccounts" })) as string[]
       const address = accounts?.[0]
       if (!address) throw new Error("No wallet accounts returned")
 

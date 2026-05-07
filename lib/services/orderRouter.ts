@@ -11,28 +11,28 @@ import {
   placeLabOrder,
   getLabResults,
   type LabOrderInput,
-  type MockLabResult,
+  type LabResult as MockLabResult,
 } from "@/lib/integrations/labs"
 
 import {
   sendPrescription,
   checkPrescriptionStatus,
   type PrescriptionInput,
-  type MockRxStatus,
+  type PrescriptionStatus as MockRxStatus,
 } from "@/lib/integrations/pharmacy"
 
 import {
   placeImagingOrder,
   getImagingReport,
   type ImagingOrderInput,
-  type MockImagingReport,
+  type ImagingReport as MockImagingReport,
 } from "@/lib/integrations/radiology"
 
 import {
   pushClinicalSummary,
   syncPatientRecord,
   type ClinicalSummaryInput,
-  type MockEmrRecord,
+  type PatientRecord as MockEmrRecord,
 } from "@/lib/integrations/emr"
 
 /**

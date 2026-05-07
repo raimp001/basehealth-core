@@ -13,6 +13,7 @@
  * - HEALTH_INTEGRATION_API_KEY
  */
 
+import { logger } from "@/lib/logger"
 import { NextRequest, NextResponse } from "next/server"
 import { sendPrescription } from "@/lib/integrations/pharmacy"
 import type { PrescriptionInput } from "@/lib/integrations/pharmacy"

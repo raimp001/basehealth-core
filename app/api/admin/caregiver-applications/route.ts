@@ -149,7 +149,7 @@ export async function PATCH(req: NextRequest) {
     const updated = await prisma.application.update({
       where: { id: applicationId },
       data: {
-        status: newStatus,
+        status: newStatus as any,
         reviewedAt: new Date(),
         reviewedBy: getPrimaryAdminEmail(),
         reviewNotes: reviewNotes || null,
@@ -209,7 +209,7 @@ export async function PATCH(req: NextRequest) {
             serviceAreas: (application.regions as string[]) || [],
             location: ((application.regions as string[]) || [])[0] || "",
             bio: application.bio,
-            status: "APPROVED",
+            status: "APPROVED" as any,
             verified: true,
             isBackgroundChecked: application.consentToBackgroundCheck || false,
           },

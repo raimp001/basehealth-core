@@ -439,7 +439,7 @@ export async function GET(request: NextRequest) {
         for (const state of sortedStates) {
           const regex = new RegExp(`\\b${state.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
           if (regex.test(lowerCondition)) {
-            searchLocation = stateMap[state]
+            searchLocation = (stateMap as Record<string, string>)[state]
             searchCondition = searchCondition.replace(regex, '').trim()
             break
           }
@@ -459,10 +459,12 @@ export async function GET(request: NextRequest) {
             const rawLocation = match[1].trim()
             
             // Check if it's a known city or state
-            if (cityStateMap[rawLocation.toLowerCase()]) {
-              searchLocation = cityStateMap[rawLocation.toLowerCase()]
-            } else if (stateMap[rawLocation.toLowerCase()]) {
-              searchLocation = stateMap[rawLocation.toLowerCase()]
+            const cityMap = cityStateMap as Record<string, string>
+            const stMap = stateMap as Record<string, string>
+            if (cityMap[rawLocation.toLowerCase()]) {
+              searchLocation = cityMap[rawLocation.toLowerCase()]
+            } else if (stMap[rawLocation.toLowerCase()]) {
+              searchLocation = stMap[rawLocation.toLowerCase()]
             } else {
               // Use as-is if not in our database
               searchLocation = rawLocation
@@ -659,7 +661,7 @@ export async function GET(request: NextRequest) {
         
         if (healthDBResponse.success) {
           // Merge HealthDB insights with transformed studies
-          transformedStudies.forEach((study, index) => {
+          transformedStudies.forEach((study: any, index: number) => {
             if (healthDBResponse.data[index]) {
               const insight = healthDBResponse.data[index]
               if (typeof insight.eligibilityScore === 'number') {
@@ -683,7 +685,7 @@ export async function GET(request: NextRequest) {
     enhancedStudies = transformedStudies
 
     // Sort by location priority (local trials first) and then by eligibility score when available
-    enhancedStudies.sort((a, b) => {
+    enhancedStudies.sort((a: any, b: any) => {
       // First sort by location priority (higher is better)
       if (a.locationPriority !== b.locationPriority) {
         return b.locationPriority - a.locationPriority

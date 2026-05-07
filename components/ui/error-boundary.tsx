@@ -195,8 +195,12 @@ export function PageError({
 
 // Form Error Component
 interface FormErrorProps {
+  /** Alias for `message`. Backward compatible with older callers. */
+  error?: string
+  /** Alias for `onRetry`. Backward compatible with older callers. */
+  onDismiss?: () => void
   title?: string
-  message: string
+  message?: string
   onRetry?: () => void
   className?: string
 }
@@ -204,9 +208,13 @@ interface FormErrorProps {
 export function FormError({ 
   title = "Error", 
   message, 
+  error,
   onRetry,
+  onDismiss,
   className 
 }: FormErrorProps) {
+  const finalMessage = message ?? error ?? ""
+  const finalOnRetry = onRetry ?? onDismiss
   return (
     <Alert className={cn("border-red-200 bg-red-50", className)}>
       <AlertTriangle className="h-4 w-4 text-red-600" />
@@ -214,13 +222,13 @@ export function FormError({
         <div className="flex items-start justify-between">
           <div>
             <p className="font-medium">{title}</p>
-            <p className="mt-1">{message}</p>
+            <p className="mt-1">{finalMessage}</p>
           </div>
-          {onRetry && (
+          {finalOnRetry && (
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={onRetry}
+              onClick={finalOnRetry}
               className="text-red-600 hover:text-red-800 hover:bg-red-100"
             >
               <RefreshCw className="h-3 w-3 mr-1" />

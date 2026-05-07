@@ -203,7 +203,14 @@ export function buildChatTools(options: {
         where: { id: normalized },
         include: {
           user: { select: { walletAddress: true } },
-          caregiver: { select: { id: true, firstName: true, lastName: true, name: true, walletAddress: true } },
+          caregiver: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              user: { select: { walletAddress: true } },
+            },
+          },
         },
       })
 
@@ -221,9 +228,8 @@ export function buildChatTools(options: {
           return { kind: "error", error: "Not authorized to view this order." }
         }
 
-        const caregiverName = booking.caregiver?.name
-          ? booking.caregiver.name
-          : `${booking.caregiver?.firstName || ""} ${booking.caregiver?.lastName || ""}`.trim() || null
+        const caregiverName =
+          `${booking.caregiver?.firstName || ""} ${booking.caregiver?.lastName || ""}`.trim() || null
 
         return {
           kind: "order_status",
@@ -242,7 +248,7 @@ export function buildChatTools(options: {
               ? {
                   id: booking.caregiver.id,
                   name: caregiverName,
-                  walletAddress: booking.caregiver.walletAddress || null,
+                  walletAddress: booking.caregiver.user?.walletAddress || null,
                 }
               : null,
             createdAt: booking.createdAt.toISOString(),
@@ -314,7 +320,14 @@ export function buildChatTools(options: {
           where: { id: bookingId.trim() },
           include: {
             user: { select: { walletAddress: true } },
-            caregiver: { select: { id: true, firstName: true, lastName: true, name: true, walletAddress: true } },
+            caregiver: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                user: { select: { walletAddress: true } },
+              },
+            },
           },
         })
 
@@ -334,9 +347,9 @@ export function buildChatTools(options: {
           return { kind: "error", error: "Not authorized to create checkout for this booking." }
         }
 
-        const caregiverName = booking.caregiver?.name
-          ? booking.caregiver.name
-          : `${booking.caregiver?.firstName || ""} ${booking.caregiver?.lastName || ""}`.trim() || "Provider"
+        const caregiverName =
+          `${booking.caregiver?.firstName || ""} ${booking.caregiver?.lastName || ""}`.trim() ||
+          "Provider"
 
         const amount = Number.parseFloat(toAmountString(booking.amount))
 
@@ -348,7 +361,7 @@ export function buildChatTools(options: {
             serviceType: serviceType || "booking-payment",
             serviceDescription: serviceDescription || "Complete payment to confirm your booking.",
             providerName: caregiverName,
-            providerWallet: booking.caregiver?.walletAddress || basePayConfig.recipientAddress,
+            providerWallet: booking.caregiver?.user?.walletAddress || basePayConfig.recipientAddress,
             orderId: booking.id,
             providerId: booking.caregiver?.id || "basehealth",
             collectEmail: Boolean(collectEmail),

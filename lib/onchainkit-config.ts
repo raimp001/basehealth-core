@@ -30,7 +30,7 @@ export const onchainKitConfig = {
 export const baseChainInfo = {
   id: baseChain.id,
   name: baseChain.name,
-  network: baseChain.network,
+  network: (baseChain as any).network ?? baseChain.name,
   isProduction,
   blockExplorer: isProduction ? 'https://basescan.org' : 'https://sepolia.basescan.org',
   rpcUrl: baseChain.rpcUrls.default.http[0],

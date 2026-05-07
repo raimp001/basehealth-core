@@ -46,54 +46,39 @@ export function OnchainWalletConnect() {
 
           <TabsContent value="basic" className="space-y-4">
             <div className="flex justify-center py-4">
-              <ConnectWallet
-                buttonClassName="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-                dropdownClassName="bg-white shadow-lg rounded-md p-2 border border-gray-200"
-              />
+              <ConnectWallet className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md" />
             </div>
 
             <div className="bg-muted p-4 rounded-md">
               <p className="text-sm text-center text-muted-foreground">
-                Connect your wallet to access healthcare services and make payments on the {network.name} network.
+                Connect your wallet to access healthcare services and make payments on the {network.chainName} network.
               </p>
             </div>
           </TabsContent>
 
           <TabsContent value="advanced" className="space-y-4">
             <Wallet>
-              {({ isConnected, address }) => (
-                <div className="space-y-4">
-                  {isConnected && address ? (
-                    <>
-                      <div className="bg-muted p-4 rounded-md">
-                        <WalletAdvancedAddressDetails />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-muted p-4 rounded-md">
-                          <h3 className="text-sm font-medium mb-2">Token Holdings</h3>
-                          <WalletAdvancedTokenHoldings />
-                        </div>
-
-                        <div className="bg-muted p-4 rounded-md">
-                          <h3 className="text-sm font-medium mb-2">Actions</h3>
-                          <WalletAdvancedWalletActions />
-                          <div className="mt-2">
-                            <WalletAdvancedTransactionActions />
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-center py-4">
-                      <ConnectWallet
-                        buttonClassName="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md"
-                        dropdownClassName="bg-white shadow-lg rounded-md p-2 border border-gray-200"
-                      />
-                    </div>
-                  )}
+              <ConnectWallet className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md" />
+              <div className="space-y-4 mt-4">
+                <div className="bg-muted p-4 rounded-md">
+                  <WalletAdvancedAddressDetails />
                 </div>
-              )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-muted p-4 rounded-md">
+                    <h3 className="text-sm font-medium mb-2">Token Holdings</h3>
+                    <WalletAdvancedTokenHoldings />
+                  </div>
+
+                  <div className="bg-muted p-4 rounded-md">
+                    <h3 className="text-sm font-medium mb-2">Actions</h3>
+                    <WalletAdvancedWalletActions />
+                    <div className="mt-2">
+                      <WalletAdvancedTransactionActions />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </Wallet>
           </TabsContent>
         </Tabs>

@@ -286,13 +286,6 @@ export function DirectUsdcCheckout({
 }
 
 // Add ethereum type to window
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: any[] }) => Promise<any>
-      on?: (event: string, callback: (...args: any[]) => void) => void
-    }
-  }
-}
+// window.ethereum is declared in types/modules.d.ts
 
 export default DirectUsdcCheckout

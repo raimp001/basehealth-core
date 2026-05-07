@@ -90,7 +90,7 @@ async function testNPISearch() {
     const result = await searchNPIProviders({ invalid_param: "test" })
     console.log("Result:", result)
   } catch (error) {
-    console.log("✅ Error handling works as expected:", error.message)
+    console.log("✅ Error handling works as expected:", (error as Error).message)
   }
 
   console.log("\n======================================")

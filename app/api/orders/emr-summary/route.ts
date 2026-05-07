@@ -13,6 +13,7 @@
  * - HEALTH_INTEGRATION_API_KEY
  */
 
+import { logger } from "@/lib/logger"
 import { NextRequest, NextResponse } from "next/server"
 import { pushClinicalSummary } from "@/lib/integrations/emr"
 import type { ClinicalSummaryInput } from "@/lib/integrations/emr"

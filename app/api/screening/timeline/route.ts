@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
         entityType: "ScreeningPlan",
         entityId: user.patientId || user.id,
         description: "Saved personalized screening plan",
-        metadata: metadata as Prisma.InputJsonValue,
+        metadata: metadata as unknown as Prisma.InputJsonValue,
         ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined,
         userAgent: request.headers.get("user-agent") || undefined,
       },

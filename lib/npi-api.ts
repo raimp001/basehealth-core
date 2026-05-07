@@ -246,8 +246,8 @@ export async function searchProvidersBySpecialty(
         allResults.push(...response.results)
       } else if (response && Array.isArray(response)) {
         allResults.push(...response)
-      } else if (response && response.Errors) {
-        console.warn(`NPI API Error for taxonomy "${taxonomyDesc}":`, response.Errors)
+      } else if (response && (response as any).Errors) {
+        console.warn(`NPI API Error for taxonomy "${taxonomyDesc}":`, (response as any).Errors)
         // Continue to next taxonomy instead of failing completely
         continue
       } else {

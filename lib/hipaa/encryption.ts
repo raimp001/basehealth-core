@@ -130,7 +130,7 @@ export function encryptPHIFields<T extends Record<string, any>>(
   obj: T,
   phiFields: string[]
 ): T {
-  const result = { ...obj }
+  const result: Record<string, any> = { ...obj }
   
   for (const field of phiFields) {
     if (field in result && typeof result[field] === 'string' && result[field]) {
@@ -138,7 +138,7 @@ export function encryptPHIFields<T extends Record<string, any>>(
     }
   }
   
-  return result
+  return result as T
 }
 
 /**
@@ -152,7 +152,7 @@ export function decryptPHIFields<T extends Record<string, any>>(
   obj: T,
   phiFields: string[]
 ): T {
-  const result = { ...obj }
+  const result: Record<string, any> = { ...obj }
   
   for (const field of phiFields) {
     if (field in result && typeof result[field] === 'string' && isEncrypted(result[field])) {
@@ -160,7 +160,7 @@ export function decryptPHIFields<T extends Record<string, any>>(
     }
   }
   
-  return result
+  return result as T
 }
 
 /**

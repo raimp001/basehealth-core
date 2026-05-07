@@ -26,7 +26,14 @@ import {
 import { NotificationCenter } from "@/components/notifications/notification-center"
 import { SignInWithBase } from "@/components/auth/sign-in-with-base"
 
-const navigationItems = [
+type NavItem = {
+  href: string
+  label: string
+  icon: any
+  badge?: string | number
+}
+
+const navigationItems: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/chat', label: 'Assistant', icon: Bot },
   { href: '/screening', label: 'Screenings', icon: Activity },
@@ -36,7 +43,7 @@ const navigationItems = [
   { href: '/feedback', label: 'Feedback', icon: MessageSquare },
 ]
 
-const userMenuItems = [
+const userMenuItems: NavItem[] = [
   { href: '/patient-portal', label: 'Portal', icon: User },
   { href: '/billing', label: 'Billing', icon: CreditCard },
   { href: '/support', label: 'Support', icon: LifeBuoy },

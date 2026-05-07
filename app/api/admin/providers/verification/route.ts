@@ -45,16 +45,13 @@ export async function POST(request: Request) {
       }
       
       // Run OIG/SAM verification unless explicitly skipped
+      const fullName = `${providerDetails.firstName ?? ''} ${providerDetails.lastName ?? ''}`.trim()
       if (!skipVerification) {
-        const nameParts = (providerDetails.name || '').split(' ')
-        const firstName = nameParts[0] || ''
-        const lastName = nameParts.slice(1).join(' ') || ''
-        
         oigSamResult = await verifyProviderCredentials(
           providerDetails.licenseNumber || '', // Using license as NPI for now
-          firstName,
-          lastName,
-          providerDetails.name || undefined
+          providerDetails.firstName ?? '',
+          providerDetails.lastName ?? '',
+          fullName || undefined
         )
         
         const verificationStatus = getVerificationStatus(oigSamResult)
@@ -111,8 +108,8 @@ export async function POST(request: Request) {
         providerAddress,
         {
           npi: providerDetails.licenseNumber || '',
-          name: providerDetails.name || '',
-          specialty: providerDetails.specialty || '',
+          name: fullName,
+          specialty: providerDetails.specialties?.[0] || '',
           npiVerified: true,
           oigCleared: oigSamResult?.overallClear ?? true,
           samCleared: oigSamResult?.samCheck?.debarred === false,
