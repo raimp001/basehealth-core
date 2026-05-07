@@ -11,6 +11,8 @@ import {
   Shield,
 } from "lucide-react"
 
+import { CareAskPanel } from "@/components/care-ask-panel"
+
 type Feature = {
   title: string
   description: string
@@ -113,7 +115,7 @@ export default function HomePage() {
           <div className="absolute -bottom-72 right-[-260px] h-[640px] w-[640px] rounded-full bg-gradient-radial from-accent/20 via-primary/10 to-transparent blur-3xl" />
         </div>
 
-        <div className="relative mx-auto w-full max-w-6xl px-6">
+        <div id="ask-basehealth" className="relative mx-auto w-full max-w-6xl px-6">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_420px] lg:items-end">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/30 px-3 py-1 text-xs text-muted-foreground backdrop-blur animate-fade-in">
@@ -138,10 +140,10 @@ export default function HomePage() {
 
               <div className="mt-10 flex flex-col sm:flex-row gap-3 flex-wrap animate-fade-in-up delay-200">
                 <Link
-                  href="/chat"
+                  href="#ask-basehealth"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm sm:text-base font-semibold text-primary-foreground shadow-glow-cyan transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  Ask the assistant
+                  Ask BaseHealth
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
@@ -151,10 +153,10 @@ export default function HomePage() {
                   Start screening
                 </Link>
                 <Link
-                  href="/providers/search"
+                  href="/payment/base"
                   className="inline-flex items-center justify-center gap-2 rounded-full border border-border/60 bg-card/25 backdrop-blur px-6 py-3 text-sm sm:text-base font-semibold text-foreground transition-colors hover:bg-card/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  Find care
+                  Pay on Base
                 </Link>
               </div>
 
@@ -172,41 +174,14 @@ export default function HomePage() {
             </div>
 
             <div className="animate-fade-in-up delay-200">
-              <div className="rounded-3xl border border-border/60 bg-card/30 p-6 md:p-7 backdrop-blur-md shadow-enterprise">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">How people use it</p>
-                <div className="mt-5 space-y-4">
-                  {[
-                    {
-                      title: "Screen first",
-                      description: "Use the 4-step assessment to see what screenings matter now.",
-                    },
-                    {
-                      title: "Find care next",
-                      description: "Search real providers and contact off-network clinics directly when needed.",
-                    },
-                    {
-                      title: "Keep moving",
-                      description: "Use one assistant to handle questions, follow-through, and checkout.",
-                    },
-                  ].map((item, index) => (
-                    <div key={item.title} className="rounded-2xl border border-border/50 bg-background/55 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{item.description}</p>
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground">0{index + 1}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 rounded-2xl border border-border/50 bg-background/55 p-4">
-                  <p className="text-sm font-semibold text-foreground">Patients should not have to choose an agent.</p>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                    The public experience stays simple. BaseHealth routes the work to the right internal specialist.
-                  </p>
-                </div>
-              </div>
+              <CareAskPanel
+                eyebrow="Ask BaseHealth"
+                title="Ask once. Get the answer."
+                description="Plain English in, evidence-based answer out. Care booking and payment settle on Base when you need them."
+              />
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                Patients should not have to choose an agent — BaseHealth routes the work for you.
+              </p>
             </div>
           </div>
 
