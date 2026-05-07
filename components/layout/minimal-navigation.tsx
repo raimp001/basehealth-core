@@ -21,7 +21,11 @@ import {
   Bookmark,
   Bot,
   LifeBuoy,
-  MessageSquare
+  MessageSquare,
+  Pill,
+  NotebookPen,
+  CalendarCheck2,
+  LayoutDashboard
 } from "lucide-react"
 import { NotificationCenter } from "@/components/notifications/notification-center"
 import { SignInWithBase } from "@/components/auth/sign-in-with-base"
@@ -35,6 +39,10 @@ type NavItem = {
 
 const navigationItems: NavItem[] = [
   { href: '/', label: 'Home', icon: Home },
+  { href: '/dashboard', label: 'Care hub', icon: LayoutDashboard },
+  { href: '/medications', label: 'Medications', icon: Pill },
+  { href: '/journal', label: 'Journal', icon: NotebookPen },
+  { href: '/screening/milestones', label: 'Milestones', icon: CalendarCheck2 },
   { href: '/chat', label: 'Assistant', icon: Bot },
   { href: '/screening', label: 'Screenings', icon: Activity },
   { href: '/providers/search', label: 'Find care', icon: Search },
@@ -57,18 +65,20 @@ const quickActions = [
 ]
 
 const desktopNavigationItems = [
-  { href: '/screening', label: 'Screenings' },
+  { href: '/dashboard', label: 'Care hub' },
+  { href: '/medications', label: 'Medications' },
+  { href: '/journal', label: 'Journal' },
+  { href: '/screening/milestones', label: 'Milestones' },
   { href: '/providers/search', label: 'Find care' },
-  { href: '/clinical-trials', label: 'Clinical trials' },
   { href: '/chat', label: 'Assistant' },
 ]
 
 const mobileBottomItems = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/screening', label: 'Screenings', icon: Activity },
+  { href: '/dashboard', label: 'Care', icon: LayoutDashboard },
+  { href: '/medications', label: 'Meds', icon: Pill },
+  { href: '/journal', label: 'Journal', icon: NotebookPen },
+  { href: '/screening/milestones', label: 'Screen', icon: CalendarCheck2 },
   { href: '/chat', label: 'Assistant', icon: Bot },
-  { href: '/patient-portal', label: 'Portal', icon: User },
-  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export function MinimalNavigation() {
