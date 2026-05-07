@@ -14,6 +14,7 @@ import {
   AlertCircle, Shield, Heart, Brain, User, CreditCard, X, Lock, Calendar, Stethoscope
 } from "lucide-react"
 import { BasePayCheckout } from "@/components/checkout/base-pay-checkout"
+import { CareHandoffBanner } from "@/components/care-handoff-banner"
 
 const ASSESSMENT_FEE_USD = 0.25
 
@@ -871,6 +872,8 @@ export default function ScreeningPage() {
             </div>
           </div>
         </header>
+
+        <CareHandoffBanner surface="screening" className="mb-6" />
 
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2 text-xs text-muted-foreground">

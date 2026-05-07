@@ -267,6 +267,7 @@ export default function ChatPage() {
     isLoading,
     error,
     setInput,
+    append,
   } = useChat({
     api: "/api/chat",
     body: requestBody,
@@ -289,17 +290,29 @@ export default function ChatPage() {
     if (appliedQueryState.current) return
 
     const requestedAgent = normalizeOpenClawAgent(searchParams.get("agent"))
-    const starterQuestion = searchParams.get("q")
+    const starterQuestion = searchParams.get("q") || searchParams.get("prompt")
+    const autorun = searchParams.get("autorun") === "1"
+    const topic = searchParams.get("topic")
+
     if (requestedAgent) {
       setPinnedAgent(requestedAgent)
+    } else if (topic) {
+      const topicAsAgent = normalizeOpenClawAgent(topic)
+      if (topicAsAgent) setPinnedAgent(topicAsAgent)
     }
 
     if (starterQuestion && starterQuestion.trim()) {
-      setInput(starterQuestion.trim())
+      const trimmed = starterQuestion.trim()
+      if (autorun && typeof append === "function") {
+        // Answer-first: don't make the user click "send" again.
+        append({ role: "user", content: trimmed })
+      } else {
+        setInput(trimmed)
+      }
     }
 
     appliedQueryState.current = true
-  }, [searchParams, setInput])
+  }, [searchParams, setInput, append])
 
   const placeholder =
     assistantReady === null
