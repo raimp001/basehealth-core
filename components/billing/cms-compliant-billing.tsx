@@ -124,7 +124,7 @@ export function CMSCompliantBilling() {
                   <Checkbox 
                     id="uninsured" 
                     checked={isUninsured}
-                    onCheckedChange={setIsUninsured}
+                    onCheckedChange={(checked) => setIsUninsured(checked === true)}
                   />
                   <Label htmlFor="uninsured">I am uninsured or self-pay</Label>
                 </div>

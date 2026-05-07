@@ -91,8 +91,9 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
                   showWalletLoginFirst: true,
                 },
                 embeddedWallets: {
-                  createOnLogin: 'users-without-wallets',
-                  requireUserPasswordOnCreate: false,
+                  ethereum: {
+                    createOnLogin: 'users-without-wallets',
+                  },
                 },
                 defaultChain: isMainnet ? base : baseSepolia,
                 supportedChains: [base, baseSepolia],

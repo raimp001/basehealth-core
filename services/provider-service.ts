@@ -35,14 +35,18 @@ export async function findAvailableProviders(
       const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
 
       return providers.filter((provider) => {
+        const av = provider.availability
+        // Skip string-form availability (legacy/free-form)
+        if (typeof av === "string" || !av) return true
         // Check if provider is available on this day
-        if (!provider.availability.days.includes(day)) {
+        if (!av.days?.includes(day)) {
           return false
         }
 
         // Check if provider is available at this time
-        const startTime = provider.availability.hours.start
-        const endTime = provider.availability.hours.end
+        const startTime = av.hours?.start
+        const endTime = av.hours?.end
+        if (!startTime || !endTime) return true
 
         return time >= startTime && time <= endTime
       })

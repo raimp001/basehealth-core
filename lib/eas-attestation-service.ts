@@ -189,7 +189,7 @@ export async function createProviderAttestation(
 export async function revokeProviderAttestation(
   attestationUid: string
 ): Promise<AttestationResult> {
-  void getNetworkConfig()
+  const config = getNetworkConfig()
   const signer = getAttestationSigner()
   
   if (!signer) {

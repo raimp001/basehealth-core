@@ -186,10 +186,10 @@ export default function SavedItemsPage() {
                             </button>
                           </div>
                           
-                          {item.metadata.address && (
+                          {Boolean(item.metadata.address) && (
                             <div className="flex items-center gap-2 mt-2 text-sm text-stone-500">
                               <MapPin className="h-4 w-4" />
-                              {item.metadata.address as string}
+                              {String(item.metadata.address)}
                             </div>
                           )}
                           
@@ -237,9 +237,9 @@ export default function SavedItemsPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
-                            {item.metadata.phase && (
+                            {Boolean(item.metadata.phase) && (
                               <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                                {item.metadata.phase as string}
+                                {String(item.metadata.phase)}
                               </Badge>
                             )}
                           </div>

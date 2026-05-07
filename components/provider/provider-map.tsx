@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { memo, useEffect, useRef, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { MapPin, Locate } from "lucide-react"
@@ -110,7 +110,7 @@ function ProviderMapComponent({ providers, zipCode, onProviderSelect }: Provider
 
       // Create new markers
       const newMarkers: google.maps.Marker[] = []
-      const bounds = new google.maps.LatLngBounds()
+      const bounds = new (window.google as any).maps.LatLngBounds()
 
       // Add markers for each provider
       providers.forEach(async (provider) => {
@@ -268,18 +268,16 @@ function ProviderMapComponent({ providers, zipCode, onProviderSelect }: Provider
   )
 }
 
-export const ProviderMap = memo(ProviderMapComponent, (prevProps, nextProps) => {
-  return (
-    prevProps.providers.length === nextProps.providers.length &&
-    prevProps.zipCode === nextProps.zipCode &&
-    prevProps.providers.every((p, i) => p.id === nextProps.providers[i]?.id)
-  )
-})
+export const ProviderMap = memo(
+  ProviderMapComponent,
+  (prevProps: ProviderMapProps, nextProps: ProviderMapProps) => {
+    return (
+      prevProps.providers.length === nextProps.providers.length &&
+      prevProps.zipCode === nextProps.zipCode &&
+      prevProps.providers.every((p, i) => p.id === nextProps.providers[i]?.id)
+    )
+  },
+)
 ProviderMap.displayName = "ProviderMap"
 
-// Add TypeScript definitions for Google Maps
-declare global {
-  interface Window {
-    google: any
-  }
-}
+// Google Maps types are declared globally in /types/google-maps.d.ts.

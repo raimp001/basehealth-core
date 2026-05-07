@@ -48,7 +48,10 @@ export interface Provider extends User {
   // Search-related optional properties
   relevanceScore?: number
   distance?: number | null
+  distanceNote?: string
+  isNearby?: boolean
   npi?: string
+  npiNumber?: string
   zip?: string
   gender?: string
   languages?: string[]
@@ -181,6 +184,9 @@ export interface ScreeningRecommendation {
   riskFactors?: string[]
   specialtyNeeded: string
   importance: "essential" | "recommended" | "routine"
+  grade?: string
+  recommendedAge?: { min?: number; max?: number; recommended?: number }
+  specialistTypes?: string[]
 }
 
 export interface Pharmacy {

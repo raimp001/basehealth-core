@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { logger } from "@/lib/logger"
 import { findAvailableProviders } from "@/services/provider-service"
 
 export async function GET(request: NextRequest) {

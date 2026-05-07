@@ -8,7 +8,8 @@
  */
 
 import { useEffect, useState, createContext, useContext, ReactNode } from 'react'
-import type { MiniAppContext as FarcasterMiniAppContext } from '@farcaster/miniapp-core'
+// `MiniAppContext` is no longer exported from `@farcaster/miniapp-core` — type as any for now.
+type FarcasterMiniAppContext = any
 import { useCallback } from 'react'
 
 interface MiniAppProviderContext {

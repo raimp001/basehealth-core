@@ -349,12 +349,12 @@ export function ApplicationReviewCard({ application, onReview, className }: Appl
                     Resume/CV
                   </StandardizedButton>
                 )}
-                {application.documentation.licenses.map((_, index) => (
+                {application.documentation.licenses?.map((_: string, index: number) => (
                   <StandardizedButton key={index} variant="ghost" size="sm" leftIcon={<Download className="h-4 w-4" />}>
                     License {index + 1}
                   </StandardizedButton>
                 ))}
-                {application.documentation.certifications.map((_, index) => (
+                {application.documentation.certifications?.map((_: string, index: number) => (
                   <StandardizedButton key={index} variant="ghost" size="sm" leftIcon={<Download className="h-4 w-4" />}>
                     Certification {index + 1}
                   </StandardizedButton>

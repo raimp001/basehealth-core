@@ -7,7 +7,7 @@ import { getServerSession } from 'next-auth'
 // Initialize Stripe only if API key is provided
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeKey ? new Stripe(stripeKey, {
-  apiVersion: '2024-12-18.acacia'
+  apiVersion: '2025-08-27.basil'
 }) : null
 
 export async function POST(request: NextRequest) {

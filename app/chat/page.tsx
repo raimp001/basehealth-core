@@ -118,7 +118,7 @@ export default function ChatPage() {
         setConnectedWallet(null)
         return
       }
-      if (isWalletAddress(next)) {
+      if (typeof next === "string" && isWalletAddress(next)) {
         setConnectedWallet(next.trim())
         setAuthError(null)
       }

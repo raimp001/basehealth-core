@@ -13,6 +13,7 @@
  * - HEALTH_INTEGRATION_API_KEY
  */
 
+import { logger } from "@/lib/logger"
 import { NextRequest, NextResponse } from "next/server"
 import { createLabOrder } from "@/lib/integrations/labs"
 import type { LabOrderInput } from "@/lib/integrations/labs"
