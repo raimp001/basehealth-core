@@ -39,6 +39,42 @@ export type OpenCloudAgentStatus = {
   capabilities: string[]
 }
 
+export type CareActionLogEntry = {
+  id: string
+  type: string
+  createdAt: string
+  payload?: Record<string, unknown>
+  openCloudResult?: string
+  routedTasks?: number
+}
+
+export type RuntimeConnectionSummary = {
+  vm: {
+    total: number
+    running: number
+    completed: number
+    failed: number
+    stopped: number
+  }
+  research: {
+    total: number
+    active: number
+    paused: number
+    completed: number
+    patientScoped: number
+    companyScoped: number
+  }
+  monetization: {
+    total: number
+    new: number
+    watching: number
+    accepted: number
+    rejected: number
+    topOpportunityId?: string
+    topPriorityScore?: number
+  }
+}
+
 export type CareSnapshot = {
   partners: NetworkPartner[]
   priorAuth: PriorAuthItem[]
@@ -46,19 +82,81 @@ export type CareSnapshot = {
   updates: ClinicalUpdate[]
   openCloud: OpenCloudAgentStatus
   agents: { enabled: boolean; total: number; roles: string[] }
+  recentActions: CareActionLogEntry[]
+  runtime: RuntimeConnectionSummary
 }
 
 import { getOpenCloudStatus, runOpenCloudTask } from "@/lib/opencloud-agent"
 import { CARE_AGENTS, buildAgentPlan } from "@/lib/agent-mesh"
+import { listVmSessions } from '@/lib/autonomous-vm-layer'
+import { listAutoResearchJobs } from '@/lib/auto-research-layer'
+import { listMonetizationOpportunities } from '@/lib/monetization-opportunity-layer'
 
-const ACTION_LOG: Array<{ id: string; type: string; createdAt: string; payload?: Record<string, unknown>; openCloudResult?: string; routedTasks?: number }> = []
+const ACTION_LOG: CareActionLogEntry[] = []
 const MAX_ACTION_LOG_ENTRIES = 500
 
-export async function getCareSnapshot(patientId?: string): Promise<CareSnapshot> {
-  // NOTE: Do not return mock/demo patient data. This endpoint is intended to surface
-  // real operational signals once integrations exist (billing, prior auth, labs, etc.).
-  void patientId
+function appendAction(entry: CareActionLogEntry) {
+  ACTION_LOG.push(entry)
+  if (ACTION_LOG.length > MAX_ACTION_LOG_ENTRIES) ACTION_LOG.shift()
+}
 
+function getRuntimeConnectionSummary(patientId?: string): RuntimeConnectionSummary {
+  const vmSessions = listVmSessions()
+  const researchJobs = listAutoResearchJobs().filter((job) => {
+    if (!patientId) return true
+    if (job.config.scope === 'company') return true
+    return job.config.patientId === patientId
+  })
+  const opportunities = listMonetizationOpportunities()
+
+  const topOpportunity = opportunities[0]
+
+  return {
+    vm: {
+      total: vmSessions.length,
+      running: vmSessions.filter((session) => session.status === 'running').length,
+      completed: vmSessions.filter((session) => session.status === 'completed').length,
+      failed: vmSessions.filter((session) => session.status === 'failed').length,
+      stopped: vmSessions.filter((session) => session.status === 'stopped').length,
+    },
+    research: {
+      total: researchJobs.length,
+      active: researchJobs.filter((job) => job.status === 'active').length,
+      paused: researchJobs.filter((job) => job.status === 'paused').length,
+      completed: researchJobs.filter((job) => job.status === 'completed').length,
+      patientScoped: researchJobs.filter((job) => job.config.scope === 'patient').length,
+      companyScoped: researchJobs.filter((job) => job.config.scope === 'company').length,
+    },
+    monetization: {
+      total: opportunities.length,
+      new: opportunities.filter((item) => item.status === 'new').length,
+      watching: opportunities.filter((item) => item.status === 'watching').length,
+      accepted: opportunities.filter((item) => item.status === 'accepted').length,
+      rejected: opportunities.filter((item) => item.status === 'rejected').length,
+      topOpportunityId: topOpportunity?.id,
+      topPriorityScore: topOpportunity?.priorityScore,
+    },
+  }
+}
+
+export function recordCareEvent(type: string, payload?: Record<string, unknown>): CareActionLogEntry {
+  const action = {
+    id: `act-${Date.now()}`,
+    type,
+    createdAt: new Date().toISOString(),
+    payload,
+  }
+
+  appendAction(action)
+  return action
+}
+
+export function getRecentCareActions(limit = 25): CareActionLogEntry[] {
+  const normalizedLimit = Number.isFinite(limit) ? Math.max(1, Math.min(100, Math.floor(limit))) : 25
+  return ACTION_LOG.slice(-normalizedLimit).reverse()
+}
+
+export async function getCareSnapshot(patientId?: string): Promise<CareSnapshot> {
   return {
     partners: [],
     priorAuth: [],
@@ -70,6 +168,8 @@ export async function getCareSnapshot(patientId?: string): Promise<CareSnapshot>
       total: CARE_AGENTS.length,
       roles: [...new Set(CARE_AGENTS.map((agent) => agent.role))],
     },
+    recentActions: getRecentCareActions(20),
+    runtime: getRuntimeConnectionSummary(patientId),
   }
 }
 
@@ -92,7 +192,6 @@ export async function createCareAction(type: string, payload?: Record<string, un
     routedTasks: routedPlan.tasks.length,
   }
 
-  ACTION_LOG.push(action)
-  if (ACTION_LOG.length > MAX_ACTION_LOG_ENTRIES) ACTION_LOG.shift()
+  appendAction(action)
   return { ...action, openCloud, routedPlan }
 }
