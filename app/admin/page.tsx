@@ -226,6 +226,24 @@ export default function AdminPortalPage() {
                     </div>
                   </div>
                 </Link>
+
+
+                <Link href="/admin/runtime">
+                  <div className="rounded-xl p-5 transition-all cursor-pointer group" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Database className="w-5 h-5" style={{ color: 'hsl(var(--accent))' }} />
+                        <div>
+                          <p className="font-medium">Runtime Connectivity Hub</p>
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                            VM, research, and monetization status in one view
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-5 w-5" style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                  </div>
+                </Link>
               </div>
 
               <div className="space-y-3 mt-8">
