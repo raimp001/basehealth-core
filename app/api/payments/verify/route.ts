@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { 
   verifyBasePayment, 
   isPaymentProcessed, 
@@ -23,6 +24,7 @@ import {
 import { prisma } from '@/lib/prisma'
 import { ACTIVE_CHAIN } from '@/lib/network-config'
 import { createBillingReceipt } from '@/lib/base-billing'
+import { isAdminEmail } from '@/lib/admin-access'
 
 interface VerifyRequest {
   paymentId: string
@@ -43,6 +45,10 @@ interface VerifyRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: VerifyRequest = await request.json()
+    const token = await getToken({ req: request as any, secret: process.env.NEXTAUTH_SECRET })
+    const actorUserId = typeof token?.id === 'string' ? token.id : ''
+    const actorEmail = typeof token?.email === 'string' ? token.email : ''
+    const actorWallet = typeof token?.walletAddress === 'string' ? token.walletAddress.toLowerCase() : ''
     
     const { 
       paymentId, 
@@ -71,6 +77,60 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'Expected amount is required',
       }, { status: 400 })
+    }
+
+    if (!actorUserId && !isAdminEmail(actorEmail)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required',
+      }, { status: 401 })
+    }
+
+    const existingTx = await prisma.transaction.findFirst({
+      where: {
+        OR: [
+          { transactionHash: paymentId },
+          { providerId: paymentId },
+        ],
+      },
+      select: { id: true },
+    })
+
+    if (existingTx) {
+      return NextResponse.json({
+        success: false,
+        error: 'Payment has already been recorded',
+        code: 'PAYMENT_ALREADY_RECORDED',
+      }, { status: 409 })
+    }
+
+    const bookingForAuth = await prisma.booking.findUnique({
+      where: { id: orderId },
+      include: { caregiver: { select: { userId: true } } },
+    })
+
+    if (bookingForAuth) {
+      const canAccessBooking =
+        isAdminEmail(actorEmail)
+        || (actorUserId && bookingForAuth.userId === actorUserId)
+        || (actorUserId && bookingForAuth.caregiver?.userId === actorUserId)
+
+      if (!canAccessBooking) {
+        return NextResponse.json({
+          success: false,
+          error: 'Not authorized for this order',
+        }, { status: 403 })
+      }
+
+      const requestedAmount = Number.parseFloat(expectedAmount)
+      const bookingAmount = Number(bookingForAuth.amount)
+      const amountDiff = Math.abs(requestedAmount - bookingAmount)
+      if (!Number.isFinite(requestedAmount) || amountDiff > 0.000001) {
+        return NextResponse.json({
+          success: false,
+          error: `Amount mismatch for order. Expected ${bookingAmount.toFixed(2)}`,
+        }, { status: 400 })
+      }
     }
     
     // Check for replay attack
@@ -101,6 +161,13 @@ export async function POST(request: NextRequest) {
       typeof verification.sender === "string" ? verification.sender.toLowerCase() : verification.sender
     const normalizedRecipient =
       typeof verification.recipient === "string" ? verification.recipient.toLowerCase() : verification.recipient
+
+    if (!isAdminEmail(actorEmail) && actorWallet && normalizedSender && actorWallet !== normalizedSender) {
+      return NextResponse.json({
+        success: false,
+        error: 'Payment sender does not match authenticated wallet',
+      }, { status: 403 })
+    }
     
     // Mark payment as processed to prevent replay
     markPaymentProcessed(
