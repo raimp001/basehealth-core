@@ -36,7 +36,7 @@
     "@coinbase/wallet-sdk": "^4.3.7",
     "@ethereum-attestation-service/eas-sdk": "^2.9.0",
     "@farcaster/miniapp-sdk": "^0.2.2",
-    "@hookform/resolvers": "^3.9.1",
+    "@hookform/resolvers": "^5.2.2",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@prisma/client": "^6.16.2",
     "@privy-io/react-auth": "^3.13.0",
