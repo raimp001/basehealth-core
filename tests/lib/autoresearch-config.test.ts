@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getProviderOrder, normalizeAutoResearchSettings } from "@/lib/autoresearch/config"
+import { getAutoResearchAwsConfig, getProviderOrder, normalizeAutoResearchSettings } from "@/lib/autoresearch/config"
 
 describe("auto-research config", () => {
   it("clamps iterations and trims evaluation command", () => {
@@ -42,5 +42,30 @@ describe("auto-research config", () => {
     expect(getProviderOrder("openclaw-first")).toEqual(["openclaw", "openai", "groq"])
     expect(getProviderOrder("openai-first")).toEqual(["openai", "openclaw", "groq"])
     expect(getProviderOrder("groq-first")).toEqual(["groq", "openclaw", "openai"])
+  })
+
+  it("detects AWS env credential configuration", () => {
+    const originalKey = process.env.AWS_ACCESS_KEY_ID
+    const originalSecret = process.env.AWS_SECRET_ACCESS_KEY
+
+    process.env.AWS_ACCESS_KEY_ID = "test-key"
+    process.env.AWS_SECRET_ACCESS_KEY = "test-secret"
+
+    const aws = getAutoResearchAwsConfig()
+
+    expect(aws.credentialsConfigured).toBe(true)
+    expect(aws.credentialSource).toBe("env")
+
+    if (originalKey === undefined) {
+      delete process.env.AWS_ACCESS_KEY_ID
+    } else {
+      process.env.AWS_ACCESS_KEY_ID = originalKey
+    }
+
+    if (originalSecret === undefined) {
+      delete process.env.AWS_SECRET_ACCESS_KEY
+    } else {
+      process.env.AWS_SECRET_ACCESS_KEY = originalSecret
+    }
   })
 })

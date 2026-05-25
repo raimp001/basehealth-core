@@ -107,6 +107,8 @@ type DashboardData = {
       ecsService: string | null
       ecsTaskDefinition: string | null
       cloudWatchLogGroup: string | null
+      credentialsConfigured: boolean
+      credentialSource: "env" | "role" | null
       configured: boolean
     }
   }
@@ -427,6 +429,9 @@ export function ResearchDashboard() {
             <p className="text-xs text-muted-foreground break-all">Queue: {data?.config.aws.sqsQueueUrl || "not set"}</p>
             <p className="text-xs text-muted-foreground break-all">Bucket: {data?.config.aws.s3Bucket || "not set"}</p>
             <p className="text-xs text-muted-foreground break-all">Log group: {data?.config.aws.cloudWatchLogGroup || "not set"}</p>
+            <p className="text-xs text-muted-foreground break-all">
+              Credentials: {data?.config.aws.credentialsConfigured ? data.config.aws.credentialSource : "not detected"}
+            </p>
           </CardContent>
         </Card>
 
@@ -569,6 +574,12 @@ export function ResearchDashboard() {
             {executionTarget === "aws-sqs" && !data?.config.aws.configured ? (
               <p className="text-xs text-amber-200">
                 AWS queue execution needs <code className="font-mono">AWS_REGION</code>, <code className="font-mono">CLAWDBOT_AWS_SQS_QUEUE_URL</code>, and <code className="font-mono">CLAWDBOT_AWS_S3_BUCKET</code>.
+              </p>
+            ) : null}
+
+            {executionTarget === "aws-sqs" && data?.config.aws.configured && !data?.config.aws.credentialsConfigured ? (
+              <p className="text-xs text-amber-200">
+                AWS queue execution also needs credentials. Use <code className="font-mono">AWS_ACCESS_KEY_ID</code> and <code className="font-mono">AWS_SECRET_ACCESS_KEY</code> on Vercel, or an attached IAM role on ECS.
               </p>
             ) : null}
 

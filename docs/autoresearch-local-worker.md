@@ -86,3 +86,5 @@ Worker commands:
 - `npm run autoresearch:worker:aws:once`
 
 The included task-definition template lives at `infra/aws/autoresearch-task-definition.json`.
+
+For an end-to-end deployment path using ECR, ECS/Fargate, SQS, S3, and CloudWatch, see `docs/autoresearch-aws-deploy.md`.
