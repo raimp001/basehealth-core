@@ -32,7 +32,7 @@
     "@coinbase/cds-icons": "^5.4.1",
     "@coinbase/cds-web": "^8.13.5",
     "@coinbase/coinbase-sdk": "^0.25.0",
-    "@coinbase/onchainkit": "^0.38.13",
+    "@coinbase/onchainkit": "^1.1.2",
     "@coinbase/wallet-sdk": "^4.3.7",
     "@ethereum-attestation-service/eas-sdk": "^2.9.0",
     "@farcaster/miniapp-sdk": "^0.2.2",
