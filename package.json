@@ -118,7 +118,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.2.1",
-    "@vitest/coverage-v8": "^1.2.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^1.2.0",
     "jsdom": "^23.2.0",
     "postcss": "^8",
